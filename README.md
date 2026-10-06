@@ -1,1 +1,7 @@
 # ft_irc
+| Fase | Días | Alex (Red y Buffering) | Kang (Parser y Auth) | Darío (Canales y Modos) | Entregable / Hito conjunto |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Fase 1** | Días 1 – 4 | Socket, bind, listen, bucle poll() y buffering (recorte en \r\n). | Estructura clase Client y diseño del parser (separar comando y argumentos). | Estructura clase Channel y diseño de almacenamiento en servidor. | El servidor recibe texto por terminal con `nc` y entrega líneas limpias al parser. |
+| **Fase 2** | Días 5 – 12 | fcntl(O_NONBLOCK), señales (ctrl+c), desconexiones limpias y cola de envío. | Comandos PASS, NICK, USER, QUIT y PRIVMSG directo usuario-a-usuario. | Comandos JOIN, PART, TOPIC y reenvío de PRIVMSG dentro de un canal. | Login funcional completo y chat operativo tanto por privado como por canal. |
+| **Fase 3** | Días 13 – 16 | Depuración de sockets, fugas de memoria (Valgrind) y control de errores en recv/send. | Códigos de respuesta numéricos estándar (RPL/ERR) y validaciones de entrada. | Comandos de operador: KICK, INVITE y modos de canal (MODE i, t, k, o, l). | Toda la lógica del protocolo completada y canales moderados por operadores. |
+| **Fase 4** | Días 17 – 21 | Tests de estrés (envío de paquetes partidos, saturación y desconexiones abruptas). | Pruebas de compatibilidad y autenticación con cliente oficial (irssi). | Pruebas de permisos, límites de usuarios (+l) y claves (+k) con varios clientes. | Servidor robusto, sin caídas ante entradas inválidas y listo para evaluación. |
