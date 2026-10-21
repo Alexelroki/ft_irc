@@ -3,6 +3,7 @@
 
 # include <string>
 # include <set>
+# include <cstddef>
 
 class Client;
 
@@ -19,7 +20,7 @@ class Channel
 		bool				_hasKey;
 		std::string			_key;
 		bool				_hasLimit;
-		unsigned int		_limit;
+		size_t				_limit;
 
 		Channel();
 		Channel(const Channel &other);
@@ -29,15 +30,28 @@ class Channel
 		Channel(const std::string &name);
 		~Channel();
 
-		bool	hasMember(Client *client) const;
-		void	broadcast(const std::string &msg, const Client *sender) const;
-		
-
-		addMember(const Client *member);
-		removeMember(const Client *member);
-		findMember(const Client &member);
-		changeName(const std::string name);
-		changeMode(const char mode);
+		bool				hasMember(Client *client) const;
+		void				broadcast(const std::string &msg, const Client *sender) const;
+		void				insertClient(Client *client);
+		void				removeClient(Client *client);
+		bool				isEmpty() const;
+		bool				hasOperator(Client *client) const;
+		bool				insertOperator(Client *client);
+		void				removeOperator(Client *client);
+		bool				insertGuest(Client *client);
+		bool				hasGuest(Client *client) const;
+		const std::string	&getTopic() const;
+		void				changeTopic(const std::string &topic);
+		bool				isInviteOnly() const;
+		void				changeInviteOnly();
+		bool				isTopicRestricted() const;
+		void				changeTopicRestricted(bool mode);
+		bool				acceptsKey(const std::string &key) const;
+		bool				enableKey(const std::string &key);
+		void				disableKey();
+		bool				isFull() const;
+		bool				enableLimit(size_t limit);
+		void				disableLimit();
 };
 
 #endif
