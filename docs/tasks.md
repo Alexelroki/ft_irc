@@ -17,3 +17,6 @@ Conexión con A y B: Channel ahora llama a queue() de Client dentro del reparto.
 
 ## Envio de mensaje
 Para entregar un mensaje es queue(), el que vimos antes. No tienes Client.hpp todavía, así que su firma exacta (si recibe un std::string, y por referencia o por valor) hay que confirmarla con B
+
+## metodo getNick de Client
+confirmar que getNick() existe en Client con ese nombre y devuelve std::string

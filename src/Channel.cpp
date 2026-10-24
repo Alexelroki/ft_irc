@@ -158,3 +158,26 @@ void	Channel::disableLimit()
 	_hasLimit = false;
 	_limit = 0;
 }
+
+std::string			Channel::membersList() const
+{
+	std::string tmp;
+	std::set<Client*>::const_iterator it;
+
+	it = _members.begin();
+	while (it != _members.end())
+	{
+		if (!tmp.empty())
+			tmp.append(" ");
+		if (hasOperator(*it))
+			tmp.append("@");
+		tmp.append((*it)->getNick());
+		it++;
+	}
+	return (tmp);
+}
+
+const std::string	&Channel::getName() const
+{
+	return (_name);
+}

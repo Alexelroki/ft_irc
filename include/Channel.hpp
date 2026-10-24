@@ -52,6 +52,8 @@ class Channel
 		bool				isFull() const;
 		bool				enableLimit(size_t limit);
 		void				disableLimit();
+		std::string			membersList() const;
+		const std::string	&getName() const;
 };
 
 #endif
