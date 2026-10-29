@@ -252,7 +252,6 @@ void	cmdInvite(Server &server, Client &client, const Message &msg)
 	target->queue(":" + client.prefix() + " INVITE " + target->getNick() + " " + channel->getName() + "\r\n");
 }
 
-
 void	cmdPrivmsg(Server &server, Client &client, const Message &msg)
 {
 	if (msg.params.size() < 2)
@@ -286,6 +285,53 @@ void	cmdPrivmsg(Server &server, Client &client, const Message &msg)
 	line += " :" + msg.params[1];
 	line += "\r\n";
 	channel->broadcast(line, &client);
+}
+
+void	cmdTopic(Server &server, Client &client, const Message &msg)
+{
+	if (msg.params.size() == 0)
+	{
+		reply(server, client, "461", "TOPIC");
+		return;
+	}
+	if (!isValidName(msg.params[0])) // revisar clase Message
+	{
+		reply(server, client, "403", msg.params[0]);
+		return;
+	}
+
+	Channel *channel;
+	channel = server.findChannel(msg.params[0]); // A revisar metodo para encontrar un canal y clase Message
+	if (channel == NULL)
+	{
+		reply(server, client, "403", msg.params[0]);
+		return;
+	}
+	if (!channel->hasMember(&client))
+	{
+		reply(server, client, "442", channel->getName());
+		return;
+	}
+
+	if (msg.params.size() == 1) // Solo Consulta
+	{
+		if (channel->getTopic() == "")
+			reply(server, client, "331", channel->getName());
+		else
+			reply(server, client, "332", channel->getName(), channel->getTopic());
+	}
+	else						// Modificar Topic
+	{
+		if (channel->isTopicRestricted() && !channel->hasOperator(&client))
+		{
+			reply(server, client, "482", channel->getName());
+			return;
+		}
+		channel->changeTopic(msg.params[1]);
+		std::string line = ":" + client.prefix() + " TOPIC " + channel->getName() + " :" + channel->getTopic();
+		line += "\r\n";
+		channel->broadcast(line, NULL); // B método prefix() de Client (devuelve nick!user@host) revisar si lleva : y si devuelve un std::string
+	}
 }
 
 Message { prefix, command, params[] }

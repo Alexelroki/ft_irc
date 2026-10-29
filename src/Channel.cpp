@@ -90,7 +90,7 @@ const std::string	&Channel::getTopic() const
 
 void	Channel::changeTopic(const std::string &topic)
 {
-	_topic = topic;
+	_topic = topic.substr(0, 100);
 }
 
 bool	Channel::isInviteOnly() const
