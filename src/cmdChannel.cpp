@@ -11,6 +11,8 @@ static void reply(Server &server, Client &client, const std::string &code, const
 		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :No topic is set\r\n");
 	else if (code == "332")
 		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :" + trailing + "\r\n");
+	else if (code == "341")
+		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Invitation sent\r\n");
 	else if (code == "353")
 		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " = " + params + " :" + trailing + "\r\n");
 	else if (code == "366")
@@ -200,6 +202,54 @@ void	cmdKick(Server &server, Client &client, const Message &msg)
 	channel->removeClient(target);
 	if (channel->isEmpty())
 		server.requestDeleteChannel(channel->getName()); // A revisar que metodo implementa el server para la solicitud de borrado.
+}
+
+void	cmdInvite(Server &server, Client &client, const Message &msg)
+{
+	if (msg.params.size() < 2)
+	{
+		reply(server, client, "461", "INVITE");
+		return;
+	}
+	if (!isValidName(msg.params[1])) // revisar clase Message
+	{
+		reply(server, client, "403", msg.params[1]);
+		return;
+	}
+
+	Channel *channel;
+	channel = server.findChannel(msg.params[1]); // A revisar metodo para encontrar un canal y clase Message
+	if (channel == NULL)
+	{
+		reply(server, client, "403", msg.params[1]);
+		return;
+	}
+	if (!channel->hasMember(&client))
+	{
+		reply(server, client, "442", channel->getName());
+		return;
+	}
+	if (!channel->hasOperator(&client))
+	{
+		reply(server, client, "482", channel->getName());
+		return;
+	}
+
+	Client *target;
+	target = server.findClient(msg.params[0]); // A revisar metodo para encontrar clientes
+	if (target == NULL)
+	{
+		reply(server, client, "401", msg.params[0]);
+		return;
+	}
+	if (!channel->insertGuest(target))
+	{
+		reply(server, client, "443", target->getNick() + " " + channel->getName());
+		return;
+	}
+
+	reply(server, client, "341", target->getNick() + " " + channel->getName());
+	target->queue(":" + client.prefix() + " INVITE " + target->getNick() + " " + channel->getName() + "\r\n");
 }
 
 
