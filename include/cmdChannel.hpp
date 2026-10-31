@@ -11,5 +11,6 @@ void	cmdKick(Server &server, Client &client, const Message &msg);
 void	cmdInvite(Server &server, Client &client, const Message &msg);
 void	cmdPrivmsg(Server &server, Client &client, const Message &msg);
 void	cmdTopic(Server &server, Client &client, const Message &msg);
+void	cmdMode(Server &server, Client &client, const Message &msg);
 
 #endif

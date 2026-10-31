@@ -1,5 +1,6 @@
 #include "Channel.hpp"
 #include "Client.hpp"
+#include <sstream>
 
 Channel::Channel(const std::string &name)
 	: _name(name), _inviteOnly(false), _topicRestricted(false), _hasKey(false), _hasLimit(false), _limit(0)
@@ -113,6 +114,11 @@ void	Channel::changeTopicRestricted(bool mode)
 	_topicRestricted = mode;
 }
 
+bool	Channel::hasKey() const
+{
+	return (_hasKey);
+}
+
 bool	Channel::acceptsKey(const std::string &key) const
 {
 	if (!_hasKey)
@@ -142,6 +148,16 @@ bool	Channel::isFull() const
 	if (_hasLimit && _members.size() >= _limit)
 		return (true);
 	return (false);
+}
+
+bool	Channel::hasLimit() const
+{
+	return (_hasLimit);
+}
+
+size_t	Channel::getLimit() const
+{
+	return (_limit);
 }
 
 bool	Channel::enableLimit(size_t limit)
@@ -180,4 +196,29 @@ std::string			Channel::membersList() const
 const std::string	&Channel::getName() const
 {
 	return (_name);
+}
+
+static std::string toString(size_t n)
+{
+	std::ostringstream oss;
+	oss << n;
+	return (oss.str());
+}
+
+std::string		Channel::getModes() const
+{
+	std::string line = "+";
+	if (isInviteOnly())
+		line += "i";
+	if (isTopicRestricted())
+		line += "t";
+	if (hasKey())
+		line += "k";
+	if (hasLimit())
+		line += "l";
+	if (hasKey())
+		line += " " + _key;
+	if (hasLimit())
+		line += " " + toString(_limit);
+	return (line);
 }

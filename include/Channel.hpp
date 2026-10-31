@@ -43,17 +43,21 @@ class Channel
 		const std::string	&getTopic() const;
 		void				changeTopic(const std::string &topic);
 		bool				isInviteOnly() const;
-		void				changeInviteOnly();
+		void				changeInviteOnly(bool mode);
 		bool				isTopicRestricted() const;
 		void				changeTopicRestricted(bool mode);
+		bool				hasKey() const;
 		bool				acceptsKey(const std::string &key) const;
 		bool				enableKey(const std::string &key);
 		void				disableKey();
 		bool				isFull() const;
+		bool				hasLimit() const;
+		size_t				getLimit() const;
 		bool				enableLimit(size_t limit);
 		void				disableLimit();
 		std::string			membersList() const;
 		const std::string	&getName() const;
+		std::string			getModes() const;
 };
 
 #endif
