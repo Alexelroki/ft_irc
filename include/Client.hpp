@@ -6,7 +6,7 @@
 /*   By: kanye <kanye@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/01 11:20:54 by kanye             #+#    #+#             */
-/*   Updated: 2026/11/01 14:27:48 by kanye            ###   ########.fr       */
+/*   Updated: 2026/11/01 21:39:06 by kanye            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,9 @@ private:
     bool                    _isAuthenticated;
     bool                    _hasUser;
     bool                    _hasPassed;
+
+
+    bool                    _isClosing;
 
 public:
 
@@ -58,6 +61,7 @@ public:
     const std::string&  getHost() const;
     std::string         prefix() const; 
 
+    //Setters
     void                setNick(const std::string& nickname);
     void                setUsername(const std::string& username);
     void                setRealname(const std::string& realname);
@@ -65,6 +69,10 @@ public:
     void                setPassed();
     void                setUserDone();
     void                setAuthenticated();
+
+    
+    void                setClosing();
+    bool                isClosing() const;
 
 
     //Autentication

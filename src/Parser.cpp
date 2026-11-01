@@ -6,7 +6,7 @@
 /*   By: kanye <kanye@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/01 15:31:14 by kanye             #+#    #+#             */
-/*   Updated: 2026/11/01 17:53:04 by kanye            ###   ########.fr       */
+/*   Updated: 2026/11/01 20:39:14 by kanye            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,7 +86,7 @@ Message	parseMessage(const std::string &rawCmd)
 {
 	Message		msg;
 	std::string	input = rawCmd;
- 
+
 	parseHead(input, msg);
 	if (msg.command.empty())
 		return (msg);

@@ -5,7 +5,7 @@ CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -Iinclude -MMD -MP
 SRC_DIR = src
 OBJ_DIR = .objs
 
-SRCS = main.cpp Server.cpp
+SRCS = main.cpp Server.cpp Client.cpp Parser.cpp
 OBJS = $(addprefix $(OBJ_DIR)/, $(SRCS:.cpp=.o))
 DEPS = $(OBJS:.o=.d)
 

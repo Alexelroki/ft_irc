@@ -18,6 +18,9 @@
 # include <sys/socket.h>
 # include <netinet/in.h>
 # include <arpa/inet.h>
+# include "Message.hpp"
+# include "Client.hpp"
+# include "CommandHandler.hpp"
 
 class Server
 {
@@ -40,7 +43,10 @@ class Server
 		std::string					password_;
 		int							serverSocketFd_;
 		std::vector<struct pollfd> 	pollFds_;
-		std::map<int, std::string>	clientBuffers_;
+		//std::map<int, std::string>	clientBuffers_;
+
+		std::map<int, Client*> clients_;
+		
 
 		static bool					signalReceived_;
 

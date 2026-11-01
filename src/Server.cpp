@@ -9,12 +9,12 @@ void			Server::signalHandler(int sigNum)
 }
 
 Server::Server()
-	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), clientBuffers_()
+	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), clients_()
 {
 }
 
 Server::Server(const std::string& portStr, const std::string& passStr)
-	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), clientBuffers_()
+	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), clients_()
 {
 	parseArgs_(portStr, passStr);
 	initSocket_();
@@ -152,7 +152,7 @@ void			Server::acceptClient_()
 	clientPollFd.revents = 0;
 
 	this->pollFds_.push_back(clientPollFd);
-	this->clientBuffers_[clientFd] = "";
+	this->clients_[clientFd] = new Client(clientFd);
 
 	std::cout << "[+] New connection from fd " << clientFd << " (" 
 	<< inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << ")\n";
@@ -171,33 +171,36 @@ void			Server::handleClientData_(int clientFd, size_t pollIndex)
 	}
 
 	// Accumulate received bytes in client's buffer
-	this->clientBuffers_[clientFd].append(buffer, bytesRead);
+	Client* client = this->clients_[clientFd];
+	client->appendBuffer(std::string(buffer, bytesRead));
 
-	// Process all full commands terminated with \r\n or \n
-	std::string&	clientBuf = this->clientBuffers_[clientFd];
-	size_t			pos;
-	while ((pos = clientBuf.find("\n")) != std::string::npos)
+	while (client->hasCompleteMessage())
 	{
-		std::string		command = clientBuf.substr(0, pos);
-		if (!command.empty() && command[command.length() - 1] == '\r')
-			command.erase(command.length() - 1);
-
-		clientBuf.erase(0, pos + 1);
+		std::string command = client->extractMessage();
 
 		if (!command.empty())
 		{
 			std::cout << "[fd " << clientFd << "] Recv command: \"" << command << "\"\n";
 			// TODO: Here Kang's parser will be called:
-			// parseAndExecute(clientFd, command);
+			Message msg = parseMessage(command);
+			if(msg.command.empty())
+				continue;
+			executeCommand(*this, *client, msg);
+			if (client->isClosing())
+    			break;
 		}
 	}
+
+	if (client->isClosing())
+        closeClient_(clientFd, pollIndex);
 }
 
 void			Server::closeClient_(int clientFd, size_t pollIndex)
 {
 	std::cout << "[-] Client disconnected on fd " << clientFd << "\n";
 	close(clientFd);
-	this->clientBuffers_.erase(clientFd);
+	delete this->clients_[clientFd];
+	this->clients_.erase(clientFd);
 	this->pollFds_.erase(this->pollFds_.begin() + pollIndex);
 }
 
@@ -210,7 +213,11 @@ void			Server::cleanup_()
 			close(this->pollFds_[i].fd);
 	}
 	this->pollFds_.clear();
-	this->clientBuffers_.clear();
+	for (std::map<int, Client*>::iterator it = this->clients_.begin(); it != this->clients_.end(); ++it)
+    {
+        delete it->second; //delete the value of the map key
+    }
+	this->clients_.clear();
 }
 
 Server::Server(const Server& other)
@@ -218,7 +225,7 @@ Server::Server(const Server& other)
 		password_(other.password_),
 		serverSocketFd_(other.serverSocketFd_),
 		pollFds_(other.pollFds_),
-		clientBuffers_(other.clientBuffers_) {}
+		clients_(other.clients_) {}
 
 Server&			Server::operator=(const Server& other)
 {
@@ -228,7 +235,7 @@ Server&			Server::operator=(const Server& other)
 		this->password_ = other.password_;
 		this->serverSocketFd_ = other.serverSocketFd_;
 		this->pollFds_ = other.pollFds_;
-		this->clientBuffers_ = other.clientBuffers_;
+		this->clients_ = other.clients_;
 	}
 	return (*this);
 }

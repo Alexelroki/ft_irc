@@ -6,7 +6,7 @@
 /*   By: kanye <kanye@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/01 11:20:33 by kanye             #+#    #+#             */
-/*   Updated: 2026/11/01 14:59:11 by kanye            ###   ########.fr       */
+/*   Updated: 2026/11/01 21:39:53 by kanye            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,8 @@ Client::Client(int fd) //New
       _inBuffer(""),
       _isAuthenticated(false),
       _hasUser(false),
-      _hasPassed(false)
+      _hasPassed(false),
+      _isClosing(false)
 {
 }
 
@@ -38,7 +39,8 @@ Client::Client(const Client& other) //Copy
       _outQueue(other._outQueue),
       _isAuthenticated(other._isAuthenticated),
       _hasUser(other._hasUser),
-      _hasPassed(other._hasPassed)
+      _hasPassed(other._hasPassed),
+      _isClosing(other._isClosing)
 {
 }
 
@@ -214,4 +216,16 @@ bool Client::hasPassed() const
 bool Client::isReadyForWelcome() const
 {
     return (this->_hasPassed && hasNick() && this->_hasUser && !this->_isAuthenticated);
+}
+
+
+
+bool Client::isClosing() const
+{
+    return (_isClosing);
+}
+
+void Client::setClosing()
+{
+    _isClosing = true;
 }
