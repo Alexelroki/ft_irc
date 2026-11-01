@@ -173,7 +173,11 @@ void			Server::handleClientData_(int clientFd, size_t pollIndex)
 	// Accumulate received bytes in client's buffer
 	Client* client = this->clients_[clientFd];
 	client->appendBuffer(std::string(buffer, bytesRead));
-
+	if (client->getBufferSize() > 4096)
+    {
+        client->setClosing();
+        return; 
+    }
 	while (client->hasCompleteMessage())
 	{
 		std::string command = client->extractMessage();

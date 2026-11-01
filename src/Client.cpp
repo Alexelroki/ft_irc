@@ -6,7 +6,7 @@
 /*   By: kanye <kanye@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/01 11:20:33 by kanye             #+#    #+#             */
-/*   Updated: 2026/11/01 21:39:53 by kanye            ###   ########.fr       */
+/*   Updated: 2026/11/02 00:46:48 by kanye            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -228,4 +228,9 @@ bool Client::isClosing() const
 void Client::setClosing()
 {
     _isClosing = true;
+}
+
+size_t Client::getBufferSize() const
+{
+    return (this->_inBuffer.size());
 }

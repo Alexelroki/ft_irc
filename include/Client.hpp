@@ -6,7 +6,7 @@
 /*   By: kanye <kanye@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/01 11:20:54 by kanye             #+#    #+#             */
-/*   Updated: 2026/11/01 21:39:06 by kanye            ###   ########.fr       */
+/*   Updated: 2026/11/02 00:46:33 by kanye            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,6 +48,7 @@ public:
     void                appendBuffer(const std::string& data); //Add new data to the client's existing buffer
     bool                hasCompleteMessage() const;
     std::string         extractMessage();
+    size_t              getBufferSize() const;
 
     //Methods created to send data
     void                queue(const std::string& msg);
