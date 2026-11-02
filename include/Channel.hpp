@@ -22,6 +22,8 @@ class Channel
 		bool				_hasLimit;
 		size_t				_limit;
 
+		static const size_t	MAX_LIMIT = 250;
+
 		Channel();
 		Channel(const Channel &other);
 		Channel &operator=(const Channel &other);
@@ -58,6 +60,7 @@ class Channel
 		std::string			membersList() const;
 		const std::string	&getName() const;
 		std::string			getModes() const;
+		size_t				getLimitMax() const;
 };
 
 #endif
