@@ -22,6 +22,8 @@
 # include "Client.hpp"
 # include "CommandHandler.hpp"
 
+#define SERVER_NAME "ft_irc"
+
 class Server
 {
 	public:
