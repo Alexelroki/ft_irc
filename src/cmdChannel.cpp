@@ -339,6 +339,135 @@ void	cmdTopic(Server &server, Client &client, const Message &msg)
 	}
 }
 
+static std::string	modeInvite(Channel &channel, bool enable)
+{
+	if (channel.isInviteOnly() == enable)
+		return ("");
+	channel.changeInviteOnly(enable);
+	if (enable)
+		return ("+i");
+	else
+		return ("-i");
+}
+
+static std::string	modeTopic(Channel &channel, bool enable)
+{
+	if (channel.isTopicRestricted() == enable)
+		return ("");
+	channel.changeTopicRestricted(enable);
+	if (enable)
+		return ("+t");
+	else
+		return ("-t");
+}
+
+static std::string	modeOperator(Server &server, Client &client, const Message &msg, Channel &channel, bool enable)
+{
+	if (msg.params.size() < 3)
+	{
+		reply(server, client, "461", "MODE");
+		return ("");
+	}
+
+	Client *target;
+	target = server.findClient(msg.params[2]);
+	if (target == NULL)
+	{
+		reply(server, client, "401", msg.params[2]);
+		return ("");
+	}
+	if (!channel.hasMember(target))
+	{
+		reply(server, client, "441", target->getNick() + " " + channel.getName());
+		return ("");
+	}
+	if (channel.hasOperator(target) == enable)
+		return ("");
+
+	std::string mode;
+	if (enable)
+	{
+		channel.insertOperator(target);
+		mode = "+o";
+		mode += " " + target->getNick();
+	}
+	else
+	{
+		channel.removeOperator(target);
+		mode = "-o";
+		mode += " " + target->getNick();
+	}
+	return (mode);
+}
+
+static std::string	modeKey(Server &server, Client &client, const Message &msg, Channel &channel, bool enable)
+{
+	std::string mode;
+	if (enable)
+	{
+		if (msg.params.size() < 3)
+		{
+			reply(server, client, "461", "MODE");
+			return ("");
+		}
+		if (channel.hasKey() && channel.acceptsKey(msg.params[2]))
+			return ("");
+		if (!channel.enableKey(msg.params[2]))
+		{
+			reply(server, client, "475", channel.getName());
+			return ("");
+		}		
+		mode = "+k";
+		mode += " " + msg.params[2];
+	}
+	else
+	{
+		if (channel.hasKey())
+		{
+			channel.disableKey();
+			mode = "-k";
+		}
+	}
+	return (mode);
+}
+
+static std::string	modeLimit(Server &server, Client &client, const Message &msg, Channel &channel, bool enable)
+{
+	std::string mode;
+
+	if (enable)
+	{
+		if (msg.params.size() < 3)
+		{
+			reply(server, client, "461", "MODE");
+			return ("");
+		}
+		size_t newLimit = 0;
+		if (!allDigits(msg.params[2]) || !toSize_t(msg.params[2], newLimit))
+		{
+			reply(server, client, "400", channel.getName());
+			return ("");
+		}
+		if (channel.hasLimit() && newLimit == channel.getLimit())
+			return ("");
+		if (!channel.enableLimit(newLimit))
+		{
+			reply(server, client, "400", channel.getName());
+			return ("");
+		}
+		mode = "+l";
+		mode += " " + toString(newLimit);
+	}
+	else
+	{
+		if (channel.hasLimit())
+		{
+			channel.disableLimit();
+			mode = "-l";
+		}
+	}
+	return (mode);
+}
 void	cmdMode(Server &server, Client &client, const Message &msg)
 {
 	if (msg.params.size() == 0)
@@ -376,144 +505,23 @@ void	cmdMode(Server &server, Client &client, const Message &msg)
 		}
 
 		std::string mode;
-		if (msg.params[1] == "+i")
-		{
-			if (!channel->isInviteOnly())
-			{
-				channel->changeInviteOnly(true);
-				mode = "+i";
-			}
-		}
-		else if (msg.params[1] == "-i")
-		{
-			if (channel->isInviteOnly())
-			{
-				channel->changeInviteOnly(false);
-				mode = "-i";
-			}
-		}
-		else if (msg.params[1] == "+t")
-		{
-			if (!channel->isTopicRestricted())
-			{
-				channel->changeTopicRestricted(true);
-				mode = "+t";
-			}
-		}
-		else if (msg.params[1] == "-t")
-		{
-			if (channel->isTopicRestricted())
-			{
-				channel->changeTopicRestricted(false);
-				mode = "-t";
-			}
-		}
+		if (msg.params[1] == "+i" || msg.params[1] == "-i")
+			mode = modeInvite(*channel, msg.params[1] == "+i");
+		else if (msg.params[1] == "+t" || msg.params[1] == "-t")
+			mode = modeTopic(*channel, msg.params[1] == "+t");
 		else if (msg.params[1] == "+o" || msg.params[1] == "-o")
-		{
-			if (msg.params.size() == 2)
-			{
-				reply(server, client, "461", "MODE");
-				return;
-			}
-
-			Client *target;
-			target = server.findClient(msg.params[2]);
-			if (target == NULL)
-			{
-				reply(server, client, "401", msg.params[2]);
-				return;
-			}
-			if (!channel->hasMember(target))
-			{
-				reply(server, client, "441", target->getNick() + " " + channel->getName());
-				return;
-			}
-
-			if (msg.params[1] == "+o" && !channel->hasOperator(target))
-			{
-				channel->insertOperator(target);
-				mode = "+o";
-				mode += " " + target->getNick();
-			}
-			else if (msg.params[1] == "-o" && channel->hasOperator(target))
-			{
-				channel->removeOperator(target);
-				mode = "-o";
-				mode += " " + target->getNick();
-			}
-		}
-		else if (msg.params[1] == "+k")
-		{
-			if (msg.params.size() == 2)
-			{
-				reply(server, client, "461", "MODE");
-				return;
-			}
-			if (!channel->hasKey() || !channel->acceptsKey(msg.params[2]))
-			{
-				if (!channel->enableKey(msg.params[2]))
-				{
-					reply(server, client, "475", channel->getName());
-					return;
-				}		
-				mode = "+k";
-				mode += " " + msg.params[2];
-			}
-		}
-		else if (msg.params[1] == "-k")
-		{
-			if (channel->hasKey())
-			{
-				channel->disableKey();
-				mode = "-k";
-			}
-		}
-		else if (msg.params[1] == "+l")
-		{
-			if (msg.params.size() == 2)
-			{
-				reply(server, client, "461", "MODE");
-				return;
-			}
-
-			if (!allDigits(msg.params[2]))
-			{
-				reply(server, client, "400", channel->getName());
-				return;
-			}
-
-			size_t newLimit;
-			if (!toSize_t(msg.params[2], newLimit))
-			{
-				reply(server, client, "400", channel->getName());
-				return;
-			}
-			if (!channel->hasLimit() || newLimit != channel->getLimit())
-			{
-				if (!channel->enableLimit(newLimit))
-				{
-					reply(server, client, "400", channel->getName());
-					return;
-				}
-				mode = "+l";
-				mode += " " + toString(newLimit);
-			}
-		}
-		else if (msg.params[1] == "-l")
-		{
-			if (channel->hasLimit())
-			{
-				channel->disableLimit();
-				mode = "-l";
-			}
-		}
+			mode = modeOperator(server, client, msg, *channel, msg.params[1] == "+o");
+		else if (msg.params[1] == "+k" || msg.params[1] == "-k")
+			mode = modeKey(server, client, msg, *channel, msg.params[1] == "+k");
+		else if (msg.params[1] == "+l" || msg.params[1] == "-l")
+			mode = modeLimit(server, client, msg, *channel, msg.params[1] == "+l");
 		else
 		{
-			reply(server, client, "472", channel->getName(), msg.params[1]);
+			reply(server, client, "472", channel->getName());
 			return;
 		}
 
-		if (mode != "")
+		if (!mode.empty())
 		{
 			std::string line = ":" + client.prefix() + " MODE " + channel->getName() + " " + mode;
 			line += "\r\n";
