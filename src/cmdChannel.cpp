@@ -530,4 +530,4 @@ void	cmdMode(Server &server, Client &client, const Message &msg)
 	}
 }
 
-Message { prefix, command, params[] }
+// Message { prefix, command, params[] }
