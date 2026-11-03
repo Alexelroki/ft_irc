@@ -1,0 +1,16 @@
+#ifndef CMDCHANNEL_HPP
+# define CMDCHANNEL_HPP
+
+class Server;
+class Client;
+class Message;
+
+void	cmdJoin(Server &server, Client &client, const Message &msg);
+void	cmdPart(Server &server, Client &client, const Message &msg);
+void	cmdKick(Server &server, Client &client, const Message &msg);
+void	cmdInvite(Server &server, Client &client, const Message &msg);
+void	cmdPrivmsg(Server &server, Client &client, const Message &msg);
+void	cmdTopic(Server &server, Client &client, const Message &msg);
+void	cmdMode(Server &server, Client &client, const Message &msg);
+
+#endif
