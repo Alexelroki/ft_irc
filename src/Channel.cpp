@@ -1,6 +1,6 @@
 #include "Channel.hpp"
 #include "Client.hpp"
-#include <sstream>
+#include "utilsChannel.hpp"
 
 Channel::Channel(const std::string &name)
 	: _name(name), _inviteOnly(false), _topicRestricted(false), _hasKey(false), _hasLimit(false), _limit(0)
@@ -164,6 +164,8 @@ bool	Channel::enableLimit(size_t limit)
 {
 	if (limit == 0)
 		return (false);
+	if (limit > MAX_LIMIT)
+		return (false);
 	_limit = limit;
 	_hasLimit = true;
 	return (true);
@@ -198,13 +200,6 @@ const std::string	&Channel::getName() const
 	return (_name);
 }
 
-static std::string toString(size_t n)
-{
-	std::ostringstream oss;
-	oss << n;
-	return (oss.str());
-}
-
 std::string		Channel::getModes() const
 {
 	std::string line = "+";
@@ -221,4 +216,9 @@ std::string		Channel::getModes() const
 	if (hasLimit())
 		line += " " + toString(_limit);
 	return (line);
+}
+
+size_t Channel::getLimitMax() const
+{
+	return (MAX_LIMIT);
 }

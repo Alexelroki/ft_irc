@@ -3,6 +3,7 @@
 #include "Client.hpp"
 #include "Channel.hpp"
 // #include "Message.hpp"
+#include "utilsChannel.hpp"
 #include <new>
 
 static void reply(Server &server, Client &client, const std::string &code, const std::string &params, const std::string &trailing = "") // B revisar queue para encolar mensaje y getNick
@@ -39,6 +40,8 @@ static void reply(Server &server, Client &client, const std::string &code, const
 		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Not enough parameters\r\n");
 	else if (code == "471")
 		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Channel is full (+l)\r\n");
+	else if (code == "472")
+		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Unknown mode\r\n");
 	else if (code == "473")
 		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Cannot join channel (+i)\r\n");
 	else if (code == "475")
@@ -336,6 +339,135 @@ void	cmdTopic(Server &server, Client &client, const Message &msg)
 	}
 }
 
+static std::string	modeInvite(Channel &channel, bool enable)
+{
+	if (channel.isInviteOnly() == enable)
+		return ("");
+	channel.changeInviteOnly(enable);
+	if (enable)
+		return ("+i");
+	else
+		return ("-i");
+}
+
+static std::string	modeTopic(Channel &channel, bool enable)
+{
+	if (channel.isTopicRestricted() == enable)
+		return ("");
+	channel.changeTopicRestricted(enable);
+	if (enable)
+		return ("+t");
+	else
+		return ("-t");
+}
+
+static std::string	modeOperator(Server &server, Client &client, const Message &msg, Channel &channel, bool enable)
+{
+	if (msg.params.size() < 3)
+	{
+		reply(server, client, "461", "MODE");
+		return ("");
+	}
+
+	Client *target;
+	target = server.findClient(msg.params[2]);
+	if (target == NULL)
+	{
+		reply(server, client, "401", msg.params[2]);
+		return ("");
+	}
+	if (!channel.hasMember(target))
+	{
+		reply(server, client, "441", target->getNick() + " " + channel.getName());
+		return ("");
+	}
+	if (channel.hasOperator(target) == enable)
+		return ("");
+
+	std::string mode;
+	if (enable)
+	{
+		channel.insertOperator(target);
+		mode = "+o";
+		mode += " " + target->getNick();
+	}
+	else
+	{
+		channel.removeOperator(target);
+		mode = "-o";
+		mode += " " + target->getNick();
+	}
+	return (mode);
+}
+
+static std::string	modeKey(Server &server, Client &client, const Message &msg, Channel &channel, bool enable)
+{
+	std::string mode;
+	if (enable)
+	{
+		if (msg.params.size() < 3)
+		{
+			reply(server, client, "461", "MODE");
+			return ("");
+		}
+		if (channel.hasKey() && channel.acceptsKey(msg.params[2]))
+			return ("");
+		if (!channel.enableKey(msg.params[2]))
+		{
+			reply(server, client, "475", channel.getName());
+			return ("");
+		}		
+		mode = "+k";
+		mode += " " + msg.params[2];
+	}
+	else
+	{
+		if (channel.hasKey())
+		{
+			channel.disableKey();
+			mode = "-k";
+		}
+	}
+	return (mode);
+}
+
+static std::string	modeLimit(Server &server, Client &client, const Message &msg, Channel &channel, bool enable)
+{
+	std::string mode;
+
+	if (enable)
+	{
+		if (msg.params.size() < 3)
+		{
+			reply(server, client, "461", "MODE");
+			return ("");
+		}
+		size_t newLimit = 0;
+		if (!allDigits(msg.params[2]) || !toSize_t(msg.params[2], newLimit))
+		{
+			reply(server, client, "400", channel.getName());
+			return ("");
+		}
+		if (channel.hasLimit() && newLimit == channel.getLimit())
+			return ("");
+		if (!channel.enableLimit(newLimit))
+		{
+			reply(server, client, "400", channel.getName());
+			return ("");
+		}
+		mode = "+l";
+		mode += " " + toString(newLimit);
+	}
+	else
+	{
+		if (channel.hasLimit())
+		{
+			channel.disableLimit();
+			mode = "-l";
+		}
+	}
+	return (mode);
+}
 void	cmdMode(Server &server, Client &client, const Message &msg)
 {
 	if (msg.params.size() == 0)
@@ -366,13 +498,36 @@ void	cmdMode(Server &server, Client &client, const Message &msg)
 		reply(server, client, "324", channel->getName() + " " + channel->getModes());
 	else						// Modificar Modos
 	{
+		if (!channel->hasOperator(&client))
+		{
+			reply(server, client, "482", channel->getName());
+			return;
+		}
 
+		std::string mode;
+		if (msg.params[1] == "+i" || msg.params[1] == "-i")
+			mode = modeInvite(*channel, msg.params[1] == "+i");
+		else if (msg.params[1] == "+t" || msg.params[1] == "-t")
+			mode = modeTopic(*channel, msg.params[1] == "+t");
+		else if (msg.params[1] == "+o" || msg.params[1] == "-o")
+			mode = modeOperator(server, client, msg, *channel, msg.params[1] == "+o");
+		else if (msg.params[1] == "+k" || msg.params[1] == "-k")
+			mode = modeKey(server, client, msg, *channel, msg.params[1] == "+k");
+		else if (msg.params[1] == "+l" || msg.params[1] == "-l")
+			mode = modeLimit(server, client, msg, *channel, msg.params[1] == "+l");
+		else
+		{
+			reply(server, client, "472", channel->getName());
+			return;
+		}
 
-		channel->changeTopic(msg.params[1]);
-		std::string line = ":" + client.prefix() + " TOPIC " + channel->getName() + " :" + channel->getTopic();
-		line += "\r\n";
-		channel->broadcast(line, NULL); // B método prefix() de Client (devuelve nick!user@host) revisar si lleva : y si devuelve un std::string
+		if (!mode.empty())
+		{
+			std::string line = ":" + client.prefix() + " MODE " + channel->getName() + " " + mode;
+			line += "\r\n";
+			channel->broadcast(line, NULL);
+		}
 	}
 }
 
-Message { prefix, command, params[] }
+// Message { prefix, command, params[] }

@@ -1,3 +1,63 @@
+# Metodos que necesito de Server (A)
+
+Server.hpp incluye Channel.hpp, y nunca al revés.
+
+*Nombre del servidor*
+std::string getName() const;
+
+*Encontrar un canal*
+Channel *findChannel(const std::string &name);
+
+NULL si no existe. Normaliza el nombre por dentro, así que el handler pasa el texto tal cual
+
+*Encontrar un cliente*
+Client *findClient(const std::string &name);
+
+NULL si no existe, y normaliza el nombre por dentro.
+
+*Insertar un canal en la estructura*
+void insertMap(Channel *channel);
+suponiendo que es un std::map<string, Channel*>
+
+Recibe el canal ya completo. Saca la clave de getName() y la normaliza. La propiedad pasa a Server cuando la inserción termina bien.
+
+*Solicitud a server para borrar un canal*
+void requestDeleteChannel(std::string name);
+
+El nombre va por valor. Server quita la entrada del map antes del delete. Es lo último que hago con el canal.
+
+*Nombre de canal o cliente valido*
+bool isValidName(std::string &) const;
+
+# Metodos que necesito de Client (B)
+
+Client.hpp	Que no incluya Channel.hpp
+
+*Nombre del cliente*
+std::string getNick() const;
+
+*Cola de mensajes del cliente*
+void queue (const std::string &message);
+
+Solo añade al outbuf. Yo le paso la línea completa con \r\n
+
+*Prefijo del cliente*
+std::string prefix() const;
+Ejemplo: dario!user@host
+
+¿Incluye el : inicial? Mi código escribe ":" + client.prefix()
+
+*Clase Message* y *Parametros de message*
+class Message {}
+
+params es std::vector<std::string>, el trailing es el último param sin :, y command va en mayúsculas. ¿Se declara con struct o con class?
+
+*PRIVMSG a un nick*
+Quién distingue canal de usuario por el primer carácter. Hoy mi cmdPrivmsg solo cubre canales.
+
+*Dispatcher*
+Llama a void cmdX(Server &, Client &, const Message &) para JOIN, PART, PRIVMSG, KICK, INVITE, TOPIC y MODE, e incluye cmdChannel.hpp. El 421 y el 451 van centralizados, y el 461 lo hace cada handler.
+
 
 # Conexiones con el resto del proyecto (A)
 
