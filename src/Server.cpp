@@ -1,4 +1,6 @@
 #include "Server.hpp"
+#include "Channel.hpp"
+#include <algorithm>
 
 bool			Server::signalReceived_ = false;
 
@@ -9,12 +11,10 @@ void			Server::signalHandler(int sigNum)
 }
 
 Server::Server()
-	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), clientBuffers_()
-{
-}
+	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), clientBuffers_(), channels_(), clients_() {}
 
 Server::Server(const std::string& portStr, const std::string& passStr)
-	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), clientBuffers_()
+	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), clientBuffers_(), channels_(), clients_()
 {
 	parseArgs_(portStr, passStr);
 	initSocket_();
@@ -211,6 +211,14 @@ void			Server::cleanup_()
 	}
 	this->pollFds_.clear();
 	this->clientBuffers_.clear();
+
+	// Free dynamically allocated channels
+	for (std::map<std::string, Channel*>::iterator it = this->channels_.begin();
+		it != this->channels_.end(); ++it)
+	{
+		delete it->second;
+	}
+	this->channels_.clear();
 }
 
 Server::Server(const Server& other)
@@ -218,7 +226,9 @@ Server::Server(const Server& other)
 		password_(other.password_),
 		serverSocketFd_(other.serverSocketFd_),
 		pollFds_(other.pollFds_),
-		clientBuffers_(other.clientBuffers_) {}
+		clientBuffers_(other.clientBuffers_),
+		channels_(other.channels_),
+		clients_(other.clients_) {}
 
 Server&			Server::operator=(const Server& other)
 {
@@ -229,6 +239,8 @@ Server&			Server::operator=(const Server& other)
 		this->serverSocketFd_ = other.serverSocketFd_;
 		this->pollFds_ = other.pollFds_;
 		this->clientBuffers_ = other.clientBuffers_;
+		this->channels_ = other.channels_;
+		this->clients_ = other.clients_;
 	}
 	return (*this);
 }
@@ -246,4 +258,68 @@ int					Server::getPort() const
 const std::string&	Server::getPassword() const
 {
 	return (this->password_);
+}
+
+std::string		Server::getName() const
+{
+	return ("ircserv");
+}
+
+Channel*		Server::findChannel(const std::string& name)
+{
+	std::string	key = name;
+	for (size_t i = 0; i < key.length(); ++i)
+		key[i] = std::tolower(key[i]);
+
+	std::map<std::string, Channel*>::iterator	it = this->channels_.find(key);
+	if (it != this->channels_.end())
+		return (it->second);
+	return (NULL);
+}
+
+Client*			Server::findClient(const std::string& nick)
+{
+	(void)nick;
+	// Temporary stub until Kang delivers Client class with getNick()
+	return (NULL);
+}
+
+void			Server::insertMap(Channel* channel)
+{
+	if (!channel)
+		return ;
+	std::string	key = channel->getName();
+	for (size_t i = 0; i < key.length(); ++i)
+		key[i] = std::tolower(key[i]);
+	this->channels_[key] = channel;
+}
+
+void			Server::requestDeleteChannel(std::string name)
+{
+	std::string key = name;
+	for (size_t i = 0; i < key.length(); ++i)
+		key[i] = std::tolower(key[i]);
+
+	std::map<std::string, Channel*>::iterator	it = this->channels_.find(key);
+	if (it != this->channels_.end())
+	{
+		delete it->second;
+		this->channels_.erase(it);
+	}
+}
+
+bool			Server::isValidName(const std::string& name) const
+{
+	if (name.empty())
+		return (false);
+	// Channel names must start with '#' or '&'
+	if (name[0] == '#' || name[0] == '&')
+	{
+		if (name.length() < 2 || name.length() > 50)
+			return (false);
+		if (name.find_first_of(" ,\a\r\n:") != std::string::npos)
+			return (false);
+		return (true);
+	}
+	return (true);
 }

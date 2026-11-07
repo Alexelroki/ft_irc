@@ -19,6 +19,10 @@
 # include <netinet/in.h>
 # include <arpa/inet.h>
 
+// Forward declarations to avoid circular dependencies
+class Channel;
+class Client;
+
 class Server
 {
 	public:
@@ -34,6 +38,14 @@ class Server
 		// Getters
 		int							getPort() const;
 		const std::string&			getPassword() const;
+		std::string					getName() const;
+
+		// Channel and Client management
+		Channel*					findChannel(const std::string& name);
+		Client*						findClient(const std::string& nick);
+		void						insertMap(Channel* channel);
+		void						requestDeleteChannel(std::string name);
+		bool						isValidName(const std::string& name) const;
 
 	private:
 		int							port_;
@@ -41,6 +53,10 @@ class Server
 		int							serverSocketFd_;
 		std::vector<struct pollfd> 	pollFds_;
 		std::map<int, std::string>	clientBuffers_;
+
+		// Containers for Channels and Clients
+		std::map<std::string, Channel*>	channels_;
+		std::map<int, Client*>			clients_;
 
 		static bool					signalReceived_;
 
