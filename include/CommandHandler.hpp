@@ -6,7 +6,7 @@
 /*   By: kanye <kanye@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/01 21:32:01 by kanye             #+#    #+#             */
-/*   Updated: 2026/11/01 21:32:33 by kanye            ###   ########.fr       */
+/*   Updated: 2026/11/08 21:52:36 by kanye            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,7 @@
 
 class Server;
 class Client;
-struct Message; // o class Message, según lo que definiste
+struct Message;
 
 void executeCommand(Server& server, Client& client, const Message& msg);
 

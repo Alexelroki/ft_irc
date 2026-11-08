@@ -6,21 +6,25 @@
 /*   By: kanye <kanye@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/01 11:20:33 by kanye             #+#    #+#             */
-/*   Updated: 2026/11/02 00:46:48 by kanye            ###   ########.fr       */
+/*   Updated: 2026/11/09 00:51:36 by kanye            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../include/Client.hpp"
 
+// Max bytes allowed waiting in the out queue. Past this the client is too slow
+static const size_t MAX_OUT_BYTES = 65536;
 
 //ORTHODOX CANONICAL FORM
-Client::Client(int fd) //New
+Client::Client(int fd)
     : _fd(fd),
       _nickname(""),
       _username(""),
       _realname(""),
       _host(""),
       _inBuffer(""),
+      _outBytes(0),
+      _quitReason(""),
       _isAuthenticated(false),
       _hasUser(false),
       _hasPassed(false),
@@ -37,6 +41,8 @@ Client::Client(const Client& other) //Copy
       _host(other._host),
       _inBuffer(other._inBuffer),
       _outQueue(other._outQueue),
+      _outBytes(other._outBytes),
+      _quitReason(other._quitReason),
       _isAuthenticated(other._isAuthenticated),
       _hasUser(other._hasUser),
       _hasPassed(other._hasPassed),
@@ -55,9 +61,12 @@ Client& Client::operator=(const Client& other) //Copy assigment
         _host = other._host;
         _inBuffer = other._inBuffer;
         _outQueue = other._outQueue;
+        _outBytes = other._outBytes;
+        _quitReason = other._quitReason;
         _isAuthenticated = other._isAuthenticated;
         _hasUser = other._hasUser;
         _hasPassed = other._hasPassed;
+        _isClosing = other._isClosing;
     }
     return (*this);
 }
@@ -68,7 +77,6 @@ Client::~Client()
 
 
 //HELPERS FUNCTIONS
-
 int Client::getFd() const
 {
     return (_fd);
@@ -79,7 +87,7 @@ void Client::appendBuffer(const std::string& data)
     _inBuffer += data;
 }
  
-//A message is complete when the buffer contains a '\n' (works for "\r\n" too)
+//A message is complete when the buffer contains a '\n'
 bool Client::hasCompleteMessage() const
 {
     return (_inBuffer.find('\n') != std::string::npos);
@@ -104,9 +112,16 @@ std::string Client::extractMessage()
 
 //SEND DATA FUNCTIONS
 
+//If the message does not fit under MAX_OUT_BYTES it is dropped and closing
 void Client::queue(const std::string& msg)
 {
+    if (_outBytes + msg.size() > MAX_OUT_BYTES)
+    {
+        _isClosing = true;
+        return ;
+    }
     _outQueue.push(msg);
+    _outBytes += msg.size();
 }
 
 bool Client::hasQueuedMessages() const
@@ -120,7 +135,13 @@ std::string Client::popQueuedMessage()
         return ("");
     std::string msg = _outQueue.front();
     _outQueue.pop();
+    _outBytes -= msg.size();
     return (msg);
+}
+
+size_t Client::getQueuedBytes() const
+{
+    return (_outBytes);
 }
 
 
@@ -143,6 +164,11 @@ const std::string& Client::getRealname() const
 const std::string& Client::getHost() const
 {
     return (this->_host);
+}
+
+const std::string& Client::getQuitReason() const
+{
+    return (this->_quitReason);
 }
 
 //"nick!user@host"
@@ -174,6 +200,11 @@ void Client::setHost(const std::string& host)
     this->_host = host;
 }
  
+void Client::setQuitReason(const std::string& reason)
+{
+    this->_quitReason = reason;
+}
+
 void Client::setPassed()
 {
     this->_hasPassed = true;
@@ -211,8 +242,7 @@ bool Client::hasPassed() const
     return (this->_hasPassed);
 }
 
-//PASS + NICK + USER are all done and the welcome (001) has not been sent yet.
-
+//PASS + NICK + USER
 bool Client::isReadyForWelcome() const
 {
     return (this->_hasPassed && hasNick() && this->_hasUser && !this->_isAuthenticated);

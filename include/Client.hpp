@@ -6,7 +6,7 @@
 /*   By: kanye <kanye@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/01 11:20:54 by kanye             #+#    #+#             */
-/*   Updated: 2026/11/02 00:46:33 by kanye            ###   ########.fr       */
+/*   Updated: 2026/11/07 19:50:55 by kanye            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,8 @@ private:
 
     std::string             _inBuffer;//DATA FROM THE CLIENT
     std::queue<std::string> _outQueue;//MESSAGES THE SERVER WANTS TO SEND TO THE CLIENT
+    size_t                  _outBytes;//BYTES CURRENTLY WAITING IN _outQueue
+    std::string             _quitReason;//REASON GIVEN IN QUIT (for the server to tell the channels)
 
     //Autentication flags
     bool                    _isAuthenticated;
@@ -54,12 +56,14 @@ public:
     void                queue(const std::string& msg);
     bool                hasQueuedMessages() const;
     std::string         popQueuedMessage();
+    size_t              getQueuedBytes() const;
 
     //Getters and Setters
     const std::string&  getNick() const;
     const std::string&  getUsername() const;
     const std::string&  getRealname() const;
     const std::string&  getHost() const;
+    const std::string&  getQuitReason() const;
     std::string         prefix() const; 
 
     //Setters
@@ -67,6 +71,7 @@ public:
     void                setUsername(const std::string& username);
     void                setRealname(const std::string& realname);
     void                setHost(const std::string& host);
+    void                setQuitReason(const std::string& reason);
     void                setPassed();
     void                setUserDone();
     void                setAuthenticated();

@@ -174,11 +174,8 @@ void			Server::handleClientData_(int clientFd, size_t pollIndex)
 	Client* client = this->clients_[clientFd];
 	client->appendBuffer(std::string(buffer, bytesRead));
 	if (client->getBufferSize() > 4096)
-    {
-        client->setClosing();
-        return; 
-    }
-	while (client->hasCompleteMessage())
+		client->setClosing();//Too much data without a finished line: nothing is processed, it is closed below
+	while (!client->isClosing() && client->hasCompleteMessage())
 	{
 		std::string command = client->extractMessage();
 
