@@ -59,7 +59,7 @@ void	cmdJoin(Server &server, Client &client, const Message& msg)
 		reply(server, client, "461", "JOIN");
 		return;
 	}
-	if (!isValidName(msg.params[0])) // revisar clase Message
+	if (!server.isValidName(msg.params[0])) // revisar clase Message
 	{
 		reply(server, client, "403", msg.params[0]);
 		return;
@@ -124,7 +124,7 @@ void	cmdPart(Server &server, Client &client, const Message &msg)
 		reply(server, client, "461", "PART");
 		return;
 	}
-	if (!isValidName(msg.params[0])) // revisar clase Message
+	if (!server.isValidName(msg.params[0])) // revisar clase Message
 	{
 		reply(server, client, "403", msg.params[0]);
 		return;
@@ -161,7 +161,7 @@ void	cmdKick(Server &server, Client &client, const Message &msg)
 		reply(server, client, "461", "KICK");
 		return;
 	}
-	if (!isValidName(msg.params[0])) // revisar clase Message
+	if (!server.isValidName(msg.params[0])) // revisar clase Message
 	{
 		reply(server, client, "403", msg.params[0]);
 		return;
@@ -216,7 +216,7 @@ void	cmdInvite(Server &server, Client &client, const Message &msg)
 		reply(server, client, "461", "INVITE");
 		return;
 	}
-	if (!isValidName(msg.params[1])) // revisar clase Message
+	if (!server.isValidName(msg.params[1])) // revisar clase Message
 	{
 		reply(server, client, "403", msg.params[1]);
 		return;
@@ -267,7 +267,7 @@ void	cmdPrivmsg(Server &server, Client &client, const Message &msg)
 			reply(server, client, "412", "");
 		return;
 	}
-	if (!isValidName(msg.params[0])) // revisar clase Message
+	if (!server.isValidName(msg.params[0])) // revisar clase Message
 	{
 		reply(server, client, "403", msg.params[0]);
 		return;
@@ -299,7 +299,7 @@ void	cmdTopic(Server &server, Client &client, const Message &msg)
 		reply(server, client, "461", "TOPIC");
 		return;
 	}
-	if (!isValidName(msg.params[0])) // revisar clase Message
+	if (!server.isValidName(msg.params[0])) // revisar clase Message
 	{
 		reply(server, client, "403", msg.params[0]);
 		return;
@@ -475,7 +475,7 @@ void	cmdMode(Server &server, Client &client, const Message &msg)
 		reply(server, client, "461", "MODE");
 		return;
 	}
-	if (!isValidName(msg.params[0])) // revisar clase Message
+	if (!server.isValidName(msg.params[0])) // revisar clase Message
 	{
 		reply(server, client, "403", msg.params[0]);
 		return;

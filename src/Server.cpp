@@ -2,25 +2,25 @@
 #include "Channel.hpp"
 #include <algorithm>
 
-bool			Server::signalReceived_ = false;
+bool					Server::signalReceived_ = false;
 
-void			Server::signalHandler(int sigNum)
+void					Server::signalHandler(int sigNum)
 {
 	(void)sigNum;
 	Server::signalReceived_ = true;
 }
 
 Server::Server()
-	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), clientBuffers_(), channels_(), clients_() {}
+	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), channels_(), clients_() {}
 
 Server::Server(const std::string& portStr, const std::string& passStr)
-	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), clientBuffers_(), channels_(), clients_()
+	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), channels_(), clients_()
 {
 	parseArgs_(portStr, passStr);
 	initSocket_();
 }
 
-void			Server::parseArgs_(const std::string& portStr, const std::string& passStr)
+void					Server::parseArgs_(const std::string& portStr, const std::string& passStr)
 {
 	if (portStr.empty())
 		throw std::runtime_error("Error: Port cannot be empty.");
@@ -32,8 +32,8 @@ void			Server::parseArgs_(const std::string& portStr, const std::string& passStr
 	}
 
 	errno = 0;
-	char*			endPtr = NULL;
-	long			portVal = std::strtol(portStr.c_str(), &endPtr, 10);
+	char*				endPtr = NULL;
+	long				portVal = std::strtol(portStr.c_str(), &endPtr, 10);
 
 	if (errno == ERANGE || portVal < 1024 || portVal > 65535)
 		throw std::runtime_error("Error: Port out of valid range (1024 - 65535).");
@@ -45,7 +45,7 @@ void			Server::parseArgs_(const std::string& portStr, const std::string& passStr
 	this->password_ = passStr;
 }
 
-void			Server::initSocket_()
+void					Server::initSocket_()
 {
 	// 1. Create socket
 	this->serverSocketFd_ = socket(AF_INET, SOCK_STREAM, 0);
@@ -53,7 +53,7 @@ void			Server::initSocket_()
 		throw std::runtime_error("Error: Failed to create server socket.");
 
 	// 2. Allow quick reuse of port/address
-	int			opt = 1;
+	int					opt = 1;
 	if (setsockopt(this->serverSocketFd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
 	{
 		close(this->serverSocketFd_);
@@ -68,7 +68,7 @@ void			Server::initSocket_()
 	}
 
 	// 4. Bind address and port
-	struct		sockaddr_in	serverAddr;
+	struct sockaddr_in	serverAddr;
 	std::memset(&serverAddr, 0, sizeof(serverAddr));
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_addr.s_addr = INADDR_ANY;
@@ -95,12 +95,24 @@ void			Server::initSocket_()
 	this->pollFds_.push_back(serverPollFd);
 }
 
-void			Server::start()
+void					Server::start()
 {
 	std::cout << "Server listening on port " << this->port_ << "...\n";
 
 	while (!Server::signalReceived_)
 	{
+		// Activate POLLOUT only for clients that have queued messages waiting to be sent
+		for (size_t i = 1; i < this->pollFds_.size(); ++i)
+		{
+			int fd = this->pollFds_[i].fd;
+			std::map<int, Client*>::iterator	it
+ = this->clients_.find(fd);
+			if (it != this->clients_.end() && it->second->hasQueuedMessages())
+				this->pollFds_[i].events = POLLIN | POLLOUT;
+			else
+				this->pollFds_[i].events = POLLIN;
+		}
+
 		int		ret = poll(&this->pollFds_[0], this->pollFds_.size(), -1);
 		if (ret < 0)
 		{
@@ -109,7 +121,6 @@ void			Server::start()
 			throw std::runtime_error("Error: poll() system call failed.");
 		}
 
-		// Iterate backwards or by index to safely remove disconnected descriptors
 		for (size_t i = 0; i < this->pollFds_.size(); ++i)
 		{
 			if (this->pollFds_[i].revents == 0)
@@ -122,6 +133,10 @@ void			Server::start()
 				else
 					handleClientData_(this->pollFds_[i].fd, i);
 			}
+			else if (this->pollFds_[i].revents & POLLOUT)
+			{
+				flushClientQueue_(this->pollFds_[i].fd, i);
+			}
 			else if (this->pollFds_[i].revents & (POLLHUP | POLLERR | POLLNVAL))
 			{
 				closeClient_(this->pollFds_[i].fd, i);
@@ -130,7 +145,7 @@ void			Server::start()
 	}
 }
 
-void			Server::acceptClient_()
+void					Server::acceptClient_()
 {
 	struct sockaddr_in	clientAddr;
 	socklen_t			clientLen = sizeof(clientAddr);
@@ -139,7 +154,6 @@ void			Server::acceptClient_()
 	if (clientFd < 0)
 		return ;
 
-	// Set incoming client socket to non-blocking
 	if (fcntl(clientFd, F_SETFL, O_NONBLOCK) < 0)
 	{
 		close(clientFd);
@@ -152,56 +166,108 @@ void			Server::acceptClient_()
 	clientPollFd.revents = 0;
 
 	this->pollFds_.push_back(clientPollFd);
-	this->clientBuffers_[clientFd] = "";
+	this->clients_[clientFd] = new Client(clientFd);
+	this->clients_[clientFd]->setHost(inet_ntoa(clientAddr.sin_addr));
 
 	std::cout << "[+] New connection from fd " << clientFd << " (" 
 	<< inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << ")\n";
 }
 
-void			Server::handleClientData_(int clientFd, size_t pollIndex)
+void					Server::handleClientData_(int clientFd, size_t pollIndex)
 {
-	char			buffer[1024];
+	char				buffer[1024];
 	std::memset(buffer, 0, sizeof(buffer));
 
-	ssize_t			bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
+	ssize_t				bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
 	if (bytesRead <= 0)
 	{
 		closeClient_(clientFd, pollIndex);
 		return;
 	}
 
-	// Accumulate received bytes in client's buffer
-	this->clientBuffers_[clientFd].append(buffer, bytesRead);
+	Client* client = this->clients_[clientFd];
+	client->appendBuffer(std::string(buffer, bytesRead));
+	if (client->getBufferSize() > 4096)
+		client->setClosing();
 
-	// Process all full commands terminated with \r\n or \n
-	std::string&	clientBuf = this->clientBuffers_[clientFd];
-	size_t			pos;
-	while ((pos = clientBuf.find("\n")) != std::string::npos)
+	while (!client->isClosing() && client->hasCompleteMessage())
 	{
-		std::string		command = clientBuf.substr(0, pos);
-		if (!command.empty() && command[command.length() - 1] == '\r')
-			command.erase(command.length() - 1);
-
-		clientBuf.erase(0, pos + 1);
+		std::string command = client->extractMessage();
 
 		if (!command.empty())
 		{
 			std::cout << "[fd " << clientFd << "] Recv command: \"" << command << "\"\n";
-			// TODO: Here Kang's parser will be called:
-			// parseAndExecute(clientFd, command);
+			Message msg = parseMessage(command);
+			if (msg.command.empty())
+				continue;
+			executeCommand(*this, *client, msg);
+			if (client->isClosing())
+				break;
+		}
+	}
+
+	if (client->isClosing())
+	{
+		// Flush remaining responses (like QUIT/ERROR) before closing socket
+		while (client->hasQueuedMessages())
+		{
+			std::string out = client->popQueuedMessage();
+			send(clientFd, out.c_str(), out.size(), MSG_NOSIGNAL);
+		}
+		closeClient_(clientFd, pollIndex);
+	}
+}
+
+void					Server::flushClientQueue_(int clientFd, size_t pollIndex)
+{
+	std::map<int, Client*>::iterator	it = this->clients_.find(clientFd);
+	if (it == this->clients_.end())
+		return ;
+
+	Client*	client = it->second;
+	while (client->hasQueuedMessages())
+	{
+		std::string	msg = client->popQueuedMessage();
+		ssize_t sent = send(clientFd, msg.c_str(), msg.size(), MSG_NOSIGNAL);
+		if (sent < 0)
+		{
+			closeClient_(clientFd, pollIndex);
+			return ;
 		}
 	}
 }
 
-void			Server::closeClient_(int clientFd, size_t pollIndex)
+void					Server::closeClient_(int clientFd, size_t pollIndex)
 {
 	std::cout << "[-] Client disconnected on fd " << clientFd << "\n";
+
+	std::map<int, Client*>::iterator	cit = this->clients_.find(clientFd);
+	if (cit != this->clients_.end())
+	{
+		Client* client = cit->second;
+		// Remove client from all channels (members, operators, guests) before deleting
+		for (std::map<std::string, Channel*>::iterator chIt = this->channels_.begin();
+			 chIt != this->channels_.end(); )
+		{
+			Channel* ch = chIt->second;
+			ch->removeClient(client);
+			if (ch->isEmpty())
+			{
+				delete ch;
+				this->channels_.erase(chIt++);
+			}
+			else
+				++chIt;
+		}
+		delete client;
+		this->clients_.erase(cit);
+	}
+
 	close(clientFd);
-	this->clientBuffers_.erase(clientFd);
 	this->pollFds_.erase(this->pollFds_.begin() + pollIndex);
 }
 
-void			Server::cleanup_()
+void					Server::cleanup_()
 {
 	std::cout << "\nShutting down server and closing open descriptors...\n";
 	for (size_t i = 0; i < this->pollFds_.size(); ++i)
@@ -210,15 +276,20 @@ void			Server::cleanup_()
 			close(this->pollFds_[i].fd);
 	}
 	this->pollFds_.clear();
-	this->clientBuffers_.clear();
 
-	// Free dynamically allocated channels
-	for (std::map<std::string, Channel*>::iterator it = this->channels_.begin();
-		it != this->channels_.end(); ++it)
+	for (std::map<std::string, Channel*>::iterator	it = this->channels_.begin();
+		 it != this->channels_.end(); ++it)
 	{
 		delete it->second;
 	}
 	this->channels_.clear();
+
+	for (std::map<int, Client*>::iterator	it = this->clients_.begin();
+		 it != this->clients_.end(); ++it)
+	{
+		delete it->second;
+	}
+	this->clients_.clear();
 }
 
 Server::Server(const Server& other)
@@ -226,11 +297,10 @@ Server::Server(const Server& other)
 		password_(other.password_),
 		serverSocketFd_(other.serverSocketFd_),
 		pollFds_(other.pollFds_),
-		clientBuffers_(other.clientBuffers_),
 		channels_(other.channels_),
 		clients_(other.clients_) {}
 
-Server&			Server::operator=(const Server& other)
+Server&					Server::operator=(const Server& other)
 {
 	if (this != &other)
 	{
@@ -238,7 +308,6 @@ Server&			Server::operator=(const Server& other)
 		this->password_ = other.password_;
 		this->serverSocketFd_ = other.serverSocketFd_;
 		this->pollFds_ = other.pollFds_;
-		this->clientBuffers_ = other.clientBuffers_;
 		this->channels_ = other.channels_;
 		this->clients_ = other.clients_;
 	}
@@ -250,22 +319,22 @@ Server::~Server()
 	cleanup_();
 }
 
-int					Server::getPort() const
+int						Server::getPort() const
 {
 	return (this->port_);
 }
 
-const std::string&	Server::getPassword() const
+const std::string&		Server::getPassword() const
 {
 	return (this->password_);
 }
 
-std::string		Server::getName() const
+std::string				Server::getName() const
 {
-	return ("ircserv");
+	return (SERVER_NAME);
 }
 
-Channel*		Server::findChannel(const std::string& name)
+Channel*				Server::findChannel(const std::string& name)
 {
 	std::string	key = name;
 	for (size_t i = 0; i < key.length(); ++i)
@@ -277,14 +346,50 @@ Channel*		Server::findChannel(const std::string& name)
 	return (NULL);
 }
 
-Client*			Server::findClient(const std::string& nick)
+Client*					Server::findClient(const std::string& nick)
 {
-	(void)nick;
-	// Temporary stub until Kang delivers Client class with getNick()
+	std::string	target = nick;
+	for (size_t i = 0; i < target.length(); ++i)
+		target[i] = std::tolower(target[i]);
+
+	for (std::map<int, Client*>::iterator	it = this->clients_.begin();
+		 it != this->clients_.end(); ++it)
+	{
+		std::string current = it->second->getNick();
+		for (size_t i = 0; i < current.length(); ++i)
+			current[i] = std::tolower(current[i]);
+		if (current == target)
+			return (it->second);
+	}
 	return (NULL);
 }
 
-void			Server::insertMap(Channel* channel)
+Client*					Server::findClientByNick(const std::string& nick)
+{
+	return (findClient(nick));
+}
+
+bool					Server::isNickInUse(const std::string& nick, const Client* exclude) const
+{
+	std::string	target = nick;
+	for (size_t i = 0; i < target.length(); ++i)
+		target[i] = std::tolower(target[i]);
+
+	for (std::map<int, Client*>::const_iterator it = this->clients_.begin();
+		 it != this->clients_.end(); ++it)
+	{
+		if (it->second == exclude)
+			continue ;
+		std::string	current = it->second->getNick();
+		for (size_t i = 0; i < current.length(); ++i)
+			current[i] = std::tolower(current[i]);
+		if (current == target)
+			return (true);
+	}
+	return (false);
+}
+
+void					Server::insertMap(Channel* channel)
 {
 	if (!channel)
 		return ;
@@ -294,7 +399,7 @@ void			Server::insertMap(Channel* channel)
 	this->channels_[key] = channel;
 }
 
-void			Server::requestDeleteChannel(std::string name)
+void					Server::requestDeleteChannel(std::string name)
 {
 	std::string key = name;
 	for (size_t i = 0; i < key.length(); ++i)
@@ -308,11 +413,10 @@ void			Server::requestDeleteChannel(std::string name)
 	}
 }
 
-bool			Server::isValidName(const std::string& name) const
+bool					Server::isValidName(const std::string& name) const
 {
 	if (name.empty())
 		return (false);
-	// Channel names must start with '#' or '&'
 	if (name[0] == '#' || name[0] == '&')
 	{
 		if (name.length() < 2 || name.length() > 50)

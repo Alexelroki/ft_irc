@@ -3,7 +3,7 @@
 
 class Server;
 class Client;
-class Message;
+struct Message;
 
 void	cmdJoin(Server &server, Client &client, const Message &msg);
 void	cmdPart(Server &server, Client &client, const Message &msg);

@@ -1,21 +1,32 @@
 NAME = ircserv
+
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -Iinclude -MMD -MP
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -Iinclude
+DEPFLAGS = -MMD -MP
 
 SRC_DIR = src
 OBJ_DIR = .objs
 
-SRCS = main.cpp Server.cpp Channel.cpp utilsChannel.cpp
-OBJS = $(addprefix $(OBJ_DIR)/, $(SRCS:.cpp=.o))
+SRCS =	main.cpp \
+		Server.cpp \
+		Client.cpp \
+		Parser.cpp \
+		CommandHandler.cpp \
+		Channel.cpp \
+		cmdChannel.cpp \
+		utilsChannel.cpp \
+		Replies.cpp
+
+OBJS = $(addprefix $(OBJ_DIR)/,$(SRCS:.cpp=.o))
 DEPS = $(OBJS:.o=.d)
 
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
+	$(CXX) $(OBJS) -o $(NAME)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
