@@ -60,7 +60,6 @@ class Channel
 		std::string				membersList() const;
 		const std::string		&getName() const;
 		std::string				getModes() const;
-		size_t					getLimitMax() const;
 		const std::set<Client*>	&getMembers() const;
 };
 

@@ -7,7 +7,7 @@ std::string toString(size_t n)
 	return (oss.str());
 }
 
-bool toSize_t(const std::string &str, std::size_t &out)
+bool toSize_t(const std::string &str, size_t &out)
 {
 	std::istringstream	iss(str);
 

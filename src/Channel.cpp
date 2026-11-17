@@ -222,8 +222,3 @@ std::string		Channel::getModes() const
 		line += " " + toString(_limit);
 	return (line);
 }
-
-size_t Channel::getLimitMax() const
-{
-	return (MAX_LIMIT);
-}

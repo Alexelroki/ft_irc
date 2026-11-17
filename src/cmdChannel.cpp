@@ -3,142 +3,92 @@
 #include "Client.hpp"
 #include "Channel.hpp"
 #include "utils.hpp"
-#include <new>
+#include "replies.hpp"
 
-static void reply(Server &server, Client &client, const std::string &code, const std::string &params, const std::string &trailing = "") // B revisar queue para encolar mensaje y getNick
-{
-	if (code == "324")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + "\r\n");
-	else if (code == "331")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :No topic is set\r\n");
-	else if (code == "332")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :" + trailing + "\r\n");
-	else if (code == "341")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Invitation sent\r\n");
-	else if (code == "353")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " = " + params + " :" + trailing + "\r\n");
-	else if (code == "366")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :End of /NAMES list\r\n");
-	else if (code == "401")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :No such target\r\n");
-	else if (code == "403")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :No such channel\r\n");
-	else if (code == "404")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Cannot send to channel\r\n");
-	else if (code == "411")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " :No recipient given (PRIVMSG)\r\n");
-	else if (code == "412")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " :No text to send\r\n");
-	else if (code == "441")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :target is not on channel\r\n");
-	else if (code == "442")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Is not on channel\r\n");
-	else if (code == "443")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Is already on channel\r\n");
-	else if (code == "461")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Not enough parameters\r\n");
-	else if (code == "471")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Channel is full (+l)\r\n");
-	else if (code == "472")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Unknown mode\r\n");
-	else if (code == "473")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Cannot join channel (+i)\r\n");
-	else if (code == "475")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Incorrect password (+k)\r\n");
-	else if (code == "482")
-		client.queue(":" + server.getName() + " " + code + " " + client.getNick() + " " + params + " :Is not a channel operator\r\n");
-	else
-		client.queue(":" + server.getName() + " 400 " + client.getNick() + " :Unknown error\r\n");
-}
 
 void	cmdJoin(Server &server, Client &client, const Message& msg)
 {
 	if (msg.params.size() == 0)
 	{
-		reply(server, client, "461", "JOIN");
+		sendNumeric(server, client, ERR_NEEDMOREPARAMS, "JOIN");
 		return;
 	}
-	if (!server.isValidName(msg.params[0])) // revisar clase Message
+	if (!server.isValidName(msg.params[0]))
 	{
-		reply(server, client, "403", msg.params[0]);
+		sendNumeric(server, client, ERR_NOSUCHCHANNEL, msg.params[0]);
 		return;
 	}
 	
 	Channel *channel;
-	channel = server.findChannel(msg.params[0]); // A revisar metodo para encontrar un canal y clase Message
+	channel = server.findChannel(msg.params[0]);
 
-	if (channel == NULL)  // Si no existe
+	if (channel == NULL)
 	{
-		channel = new Channel(msg.params[0]); // B como recibo params?
+		channel = new Channel(msg.params[0]);
 		try
 		{
 			channel->insertClient(&client);
 			channel->insertOperator(&client);
-			server.insertMap(channel);			// A como registro el canal en map de server
+			server.insertMap(channel);
 		}
-		catch(const std::exception& e)
+		catch(...)
 		{
 			delete channel;
 			throw;
 		}
 	}
-	else // Canal ya existe
+	else
 	{
 		if (channel->hasMember(&client))
 		{
-			reply(server, client, "443", channel->getName());
+			sendNumeric(server, client, ERR_USERONCHANNEL, channel->getName());
 			return;
 		}
 		if (channel->isInviteOnly() && !channel->hasGuest(&client))
 		{
-			reply(server, client, "473", channel->getName());
+			sendNumeric(server, client, ERR_INVITEONLYCHAN, channel->getName());
 			return;
 		}
 		if ((msg.params.size() == 1 && !channel->acceptsKey(""))
-			|| (msg.params.size() > 1 && !channel->acceptsKey(msg.params[1]))) // B como recibo params?
+			|| (msg.params.size() > 1 && !channel->acceptsKey(msg.params[1])))
 		{
-			reply(server, client, "475", channel->getName());
+			sendNumeric(server, client, ERR_BADCHANNELKEY, channel->getName());
 			return;
 		}
 		if (channel->isFull())
 		{
-			reply(server, client, "471", channel->getName());
+			sendNumeric(server, client, ERR_CHANNELISFULL, channel->getName());
 			return;
 		}
 		channel->insertClient(&client);
 	}
-	channel->broadcast(":" + client.prefix() + " JOIN " + channel->getName() + "\r\n", NULL); // B método prefix() de Client (devuelve nick!user@host) revisar si lleva : y si devuelve un std::string
+	channel->broadcast(":" + client.prefix() + " JOIN " + channel->getName() + "\r\n", NULL);
 	if (channel->getTopic() != "")
-		reply(server, client, "332", channel->getName(), channel->getTopic());
+		sendNumeric(server, client, RPL_TOPIC, channel->getName(), channel->getTopic());
 	else
-		reply(server, client, "331", channel->getName());
-	reply(server, client, "353", channel->getName(), channel->membersList());
-	reply(server, client, "366", channel->getName());
+		sendNumeric(server, client, RPL_NOTOPIC, channel->getName());
+	sendNumeric(server, client, RPL_NAMREPLY, "= " + channel->getName(), channel->membersList());
+	sendNumeric(server, client, RPL_ENDOFNAMES, channel->getName());
 }
 
 void	cmdPart(Server &server, Client &client, const Message &msg)
 {
 	if (msg.params.size() == 0)
 	{
-		reply(server, client, "461", "PART");
-		return;
-	}
-	if (!server.isValidName(msg.params[0])) // revisar clase Message
-	{
-		reply(server, client, "403", msg.params[0]);
+		sendNumeric(server, client, ERR_NEEDMOREPARAMS, "PART");
 		return;
 	}
 
 	Channel *channel;
-	channel = server.findChannel(msg.params[0]); // A revisar metodo para encontrar un canal y clase Message
+	channel = server.findChannel(msg.params[0]);
 	if (channel == NULL)
 	{
-		reply(server, client, "403", msg.params[0]);
+		sendNumeric(server, client, ERR_NOSUCHCHANNEL, msg.params[0]);
 		return;
 	}
 	if (!channel->hasMember(&client))
 	{
-		reply(server, client, "442", channel->getName());
+		sendNumeric(server, client, ERR_NOTONCHANNEL, channel->getName());
 		return;
 	}
 
@@ -146,54 +96,49 @@ void	cmdPart(Server &server, Client &client, const Message &msg)
 	if (msg.params.size() > 1)
 		line += " :" + msg.params[1];
 	line += "\r\n";
-	channel->broadcast(line, NULL); // B método prefix() de Client (devuelve nick!user@host) revisar si lleva : y si devuelve un std::string
+	channel->broadcast(line, NULL);
 	
 	channel->removeClient(&client);
 	if (channel->isEmpty())
-		server.requestDeleteChannel(channel->getName()); // A revisar que metodo implementa el server para la solicitud de borrado.
+		server.requestDeleteChannel(channel->getName());
 }
 
 void	cmdKick(Server &server, Client &client, const Message &msg)
 {
 	if (msg.params.size() < 2)
 	{
-		reply(server, client, "461", "KICK");
-		return;
-	}
-	if (!server.isValidName(msg.params[0])) // revisar clase Message
-	{
-		reply(server, client, "403", msg.params[0]);
+		sendNumeric(server, client, ERR_NEEDMOREPARAMS, "KICK");
 		return;
 	}
 
 	Channel *channel;
-	channel = server.findChannel(msg.params[0]); // A revisar metodo para encontrar un canal y clase Message
+	channel = server.findChannel(msg.params[0]);
 	if (channel == NULL)
 	{
-		reply(server, client, "403", msg.params[0]);
+		sendNumeric(server, client, ERR_NOSUCHCHANNEL, msg.params[0]);
 		return;
 	}
 	if (!channel->hasMember(&client))
 	{
-		reply(server, client, "442", channel->getName());
+		sendNumeric(server, client, ERR_NOTONCHANNEL, channel->getName());
 		return;
 	}
 	if (!channel->hasOperator(&client))
 	{
-		reply(server, client, "482", channel->getName());
+		sendNumeric(server, client, ERR_CHANOPRIVSNEEDED, channel->getName());
 		return;
 	}
 
 	Client *target;
-	target = server.findClient(msg.params[1]); // A revisar metodo para encontrar clientes
+	target = server.findClient(msg.params[1]);
 	if (target == NULL)
 	{
-		reply(server, client, "401", msg.params[1]);
+		sendNumeric(server, client, ERR_NOSUCHNICK, msg.params[1]);
 		return;
 	}
 	if (!channel->hasMember(target))
 	{
-		reply(server, client, "441", target->getNick() + " " + channel->getName());
+		sendNumeric(server, client, ERR_USERNOTINCHANNEL, target->getNick() + " " + channel->getName());
 		return;
 	}
 
@@ -201,91 +146,73 @@ void	cmdKick(Server &server, Client &client, const Message &msg)
 	if (msg.params.size() > 2)
 		line += " :" + msg.params[2];
 	line += "\r\n";
-	channel->broadcast(line, NULL); // B método prefix() de Client (devuelve nick!user@host) revisar si lleva : y si devuelve un std::string
+	channel->broadcast(line, NULL);
 	
 	channel->removeClient(target);
 	if (channel->isEmpty())
-		server.requestDeleteChannel(channel->getName()); // A revisar que metodo implementa el server para la solicitud de borrado.
+		server.requestDeleteChannel(channel->getName());
 }
 
 void	cmdInvite(Server &server, Client &client, const Message &msg)
 {
 	if (msg.params.size() < 2)
 	{
-		reply(server, client, "461", "INVITE");
-		return;
-	}
-	if (!server.isValidName(msg.params[1])) // revisar clase Message
-	{
-		reply(server, client, "403", msg.params[1]);
+		sendNumeric(server, client, ERR_NEEDMOREPARAMS, "INVITE");
 		return;
 	}
 
 	Channel *channel;
-	channel = server.findChannel(msg.params[1]); // A revisar metodo para encontrar un canal y clase Message
+	channel = server.findChannel(msg.params[1]);
 	if (channel == NULL)
 	{
-		reply(server, client, "403", msg.params[1]);
+		sendNumeric(server, client, ERR_NOSUCHCHANNEL, msg.params[1]);
 		return;
 	}
 	if (!channel->hasMember(&client))
 	{
-		reply(server, client, "442", channel->getName());
+		sendNumeric(server, client, ERR_NOTONCHANNEL, channel->getName());
 		return;
 	}
 	if (!channel->hasOperator(&client))
 	{
-		reply(server, client, "482", channel->getName());
+		sendNumeric(server, client, ERR_CHANOPRIVSNEEDED, channel->getName());
 		return;
 	}
 
 	Client *target;
-	target = server.findClient(msg.params[0]); // A revisar metodo para encontrar clientes
+	target = server.findClient(msg.params[0]);
 	if (target == NULL)
 	{
-		reply(server, client, "401", msg.params[0]);
+		sendNumeric(server, client, ERR_NOSUCHNICK, msg.params[0]);
 		return;
 	}
 	if (!channel->insertGuest(target))
 	{
-		reply(server, client, "443", target->getNick() + " " + channel->getName());
+		sendNumeric(server, client, ERR_USERONCHANNEL, target->getNick() + " " + channel->getName());
 		return;
 	}
 
-	reply(server, client, "341", target->getNick() + " " + channel->getName());
+	sendNumeric(server, client, RPL_INVITING, target->getNick() + " " + channel->getName());
 	target->queue(":" + client.prefix() + " INVITE " + target->getNick() + " " + channel->getName() + "\r\n");
 }
 
+// cmdPrivmsg takes two parameters because handlePrivmsg validates them beforehand
 void	cmdPrivmsg(Server &server, Client &client, const Message &msg)
 {
-	if (msg.params.size() < 2)
-	{
-		if (msg.params.size() == 0)
-			reply(server, client, "411", "");
-		else
-			reply(server, client, "412", "");
-		return;
-	}
-	if (!server.isValidName(msg.params[0])) // revisar clase Message
-	{
-		reply(server, client, "403", msg.params[0]);
-		return;
-	}
-
 	Channel *channel;
-	channel = server.findChannel(msg.params[0]); // A revisar metodo para encontrar un canal y clase Message
+	channel = server.findChannel(msg.params[0]);
 	if (channel == NULL)
 	{
-		reply(server, client, "403", msg.params[0]);
+		sendNumeric(server, client, ERR_NOSUCHCHANNEL, msg.params[0]);
 		return;
 	}
 	if (!channel->hasMember(&client))
 	{
-		reply(server, client, "404", channel->getName());
+		sendNumeric(server, client, ERR_CANNOTSENDTOCHAN, channel->getName());
 		return;
 	}
 
-	std::string line = ":" + client.prefix() + " PRIVMSG " + channel->getName(); // B método prefix() de Client
+	std::string line = ":" + client.prefix() + " PRIVMSG " + channel->getName();
 	line += " :" + msg.params[1];
 	line += "\r\n";
 	channel->broadcast(line, &client);
@@ -295,46 +222,42 @@ void	cmdTopic(Server &server, Client &client, const Message &msg)
 {
 	if (msg.params.size() == 0)
 	{
-		reply(server, client, "461", "TOPIC");
-		return;
-	}
-	if (!server.isValidName(msg.params[0])) // revisar clase Message
-	{
-		reply(server, client, "403", msg.params[0]);
+		sendNumeric(server, client, ERR_NEEDMOREPARAMS, "TOPIC");
 		return;
 	}
 
 	Channel *channel;
-	channel = server.findChannel(msg.params[0]); // A revisar metodo para encontrar un canal y clase Message
+	channel = server.findChannel(msg.params[0]);
 	if (channel == NULL)
 	{
-		reply(server, client, "403", msg.params[0]);
+		sendNumeric(server, client, ERR_NOSUCHCHANNEL, msg.params[0]);
 		return;
 	}
 	if (!channel->hasMember(&client))
 	{
-		reply(server, client, "442", channel->getName());
+		sendNumeric(server, client, ERR_NOTONCHANNEL, channel->getName());
 		return;
 	}
 
-	if (msg.params.size() == 1) // Solo Consulta
+	// if -> only check ; else -> change topic
+	if (msg.params.size() == 1)
 	{
 		if (channel->getTopic() == "")
-			reply(server, client, "331", channel->getName());
+			sendNumeric(server, client, RPL_NOTOPIC, channel->getName());
 		else
-			reply(server, client, "332", channel->getName(), channel->getTopic());
+			sendNumeric(server, client, RPL_TOPIC, channel->getName(), channel->getTopic());
 	}
-	else						// Modificar Topic
+	else
 	{
 		if (channel->isTopicRestricted() && !channel->hasOperator(&client))
 		{
-			reply(server, client, "482", channel->getName());
+			sendNumeric(server, client, ERR_CHANOPRIVSNEEDED, channel->getName());
 			return;
 		}
 		channel->changeTopic(msg.params[1]);
 		std::string line = ":" + client.prefix() + " TOPIC " + channel->getName() + " :" + channel->getTopic();
 		line += "\r\n";
-		channel->broadcast(line, NULL); // B método prefix() de Client (devuelve nick!user@host) revisar si lleva : y si devuelve un std::string
+		channel->broadcast(line, NULL);
 	}
 }
 
@@ -364,7 +287,7 @@ static std::string	modeOperator(Server &server, Client &client, const Message &m
 {
 	if (msg.params.size() < 3)
 	{
-		reply(server, client, "461", "MODE");
+		sendNumeric(server, client, ERR_NEEDMOREPARAMS, "MODE");
 		return ("");
 	}
 
@@ -372,12 +295,12 @@ static std::string	modeOperator(Server &server, Client &client, const Message &m
 	target = server.findClient(msg.params[2]);
 	if (target == NULL)
 	{
-		reply(server, client, "401", msg.params[2]);
+		sendNumeric(server, client, ERR_NOSUCHNICK, msg.params[2]);
 		return ("");
 	}
 	if (!channel.hasMember(target))
 	{
-		reply(server, client, "441", target->getNick() + " " + channel.getName());
+		sendNumeric(server, client, ERR_USERNOTINCHANNEL, target->getNick() + " " + channel.getName());
 		return ("");
 	}
 	if (channel.hasOperator(target) == enable)
@@ -385,17 +308,15 @@ static std::string	modeOperator(Server &server, Client &client, const Message &m
 
 	std::string mode;
 	if (enable)
-	{
-		channel.insertOperator(target);
 		mode = "+o";
-		mode += " " + target->getNick();
-	}
 	else
-	{
-		channel.removeOperator(target);
 		mode = "-o";
-		mode += " " + target->getNick();
-	}
+	mode += " " + target->getNick();
+
+	if (enable)
+		channel.insertOperator(target);
+	else
+		channel.removeOperator(target);
 	return (mode);
 }
 
@@ -406,14 +327,14 @@ static std::string	modeKey(Server &server, Client &client, const Message &msg, C
 	{
 		if (msg.params.size() < 3)
 		{
-			reply(server, client, "461", "MODE");
+			sendNumeric(server, client, ERR_NEEDMOREPARAMS, "MODE");
 			return ("");
 		}
 		if (channel.hasKey() && channel.acceptsKey(msg.params[2]))
 			return ("");
 		if (!channel.enableKey(msg.params[2]))
 		{
-			reply(server, client, "475", channel.getName());
+			sendNumeric(server, client, ERR_INVALIDMODEPARAM, channel.getName());
 			return ("");
 		}		
 		mode = "+k";
@@ -438,20 +359,20 @@ static std::string	modeLimit(Server &server, Client &client, const Message &msg,
 	{
 		if (msg.params.size() < 3)
 		{
-			reply(server, client, "461", "MODE");
+			sendNumeric(server, client, ERR_NEEDMOREPARAMS, "MODE");
 			return ("");
 		}
 		size_t newLimit = 0;
 		if (!allDigits(msg.params[2]) || !toSize_t(msg.params[2], newLimit))
 		{
-			reply(server, client, "400", channel.getName());
+			sendNumeric(server, client, ERR_INVALIDMODEPARAM, channel.getName());
 			return ("");
 		}
 		if (channel.hasLimit() && newLimit == channel.getLimit())
 			return ("");
 		if (!channel.enableLimit(newLimit))
 		{
-			reply(server, client, "400", channel.getName());
+			sendNumeric(server, client, ERR_INVALIDMODEPARAM, channel.getName());
 			return ("");
 		}
 		mode = "+l";
@@ -471,35 +392,31 @@ void	cmdMode(Server &server, Client &client, const Message &msg)
 {
 	if (msg.params.size() == 0)
 	{
-		reply(server, client, "461", "MODE");
-		return;
-	}
-	if (!server.isValidName(msg.params[0])) // revisar clase Message
-	{
-		reply(server, client, "403", msg.params[0]);
+		sendNumeric(server, client, ERR_NEEDMOREPARAMS, "MODE");
 		return;
 	}
 
 	Channel *channel;
-	channel = server.findChannel(msg.params[0]); // A revisar metodo para encontrar un canal y clase Message
+	channel = server.findChannel(msg.params[0]);
 	if (channel == NULL)
 	{
-		reply(server, client, "403", msg.params[0]);
+		sendNumeric(server, client, ERR_NOSUCHCHANNEL, msg.params[0]);
 		return;
 	}
 	if (!channel->hasMember(&client))
 	{
-		reply(server, client, "442", channel->getName());
+		sendNumeric(server, client, ERR_NOTONCHANNEL, channel->getName());
 		return;
 	}
 
-	if (msg.params.size() == 1) // Solo Consulta
-		reply(server, client, "324", channel->getName() + " " + channel->getModes());
-	else						// Modificar Modos
+	// if -> only check ; else -> change modes
+	if (msg.params.size() == 1)
+		sendNumeric(server, client, RPL_CHANNELMODEIS, channel->getName() + " " + channel->getModes());
+	else
 	{
 		if (!channel->hasOperator(&client))
 		{
-			reply(server, client, "482", channel->getName());
+			sendNumeric(server, client, ERR_CHANOPRIVSNEEDED, channel->getName());
 			return;
 		}
 
@@ -516,7 +433,7 @@ void	cmdMode(Server &server, Client &client, const Message &msg)
 			mode = modeLimit(server, client, msg, *channel, msg.params[1] == "+l");
 		else
 		{
-			reply(server, client, "472", channel->getName());
+			sendNumeric(server, client, ERR_UNKNOWNMODE, msg.params[1]);
 			return;
 		}
 

@@ -33,6 +33,7 @@ static const char*	defaultText(int code)
 		case ERR_INVITEONLYCHAN:	return ("Cannot join channel (+i)");
 		case ERR_BADCHANNELKEY:		return ("Cannot join channel (+k)");
 		case ERR_CHANOPRIVSNEEDED:	return ("You're not channel operator");
+		case ERR_INVALIDMODEPARAM:	return ("Invalid mode parameter");
 		default:					return ("");
 	}
 }
