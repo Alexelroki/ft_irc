@@ -244,6 +244,15 @@ void					Server::closeClient_(int clientFd, size_t pollIndex)
 	if (cit != this->clients_.end())
 	{
 		Client* client = cit->second;
+
+		if (client->isAuthenticated())
+		{
+			std::string	reason = client->getQuitReason().empty()
+				? "Remote host closed connection" : client->getQuitReason();
+			std::string	quitMsg = ":" + client->prefix() + " QUIT :" + reason + "\r\n";
+			broadcastToUserChannels(*client, quitMsg, false);
+		}
+
 		// Remove client from all channels (members, operators, guests) before deleting
 		for (std::map<std::string, Channel*>::iterator chIt = this->channels_.begin();
 			 chIt != this->channels_.end(); )

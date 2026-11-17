@@ -6,7 +6,7 @@
 /*   By: albarrei <albarrei@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/01 21:32:13 by kanye             #+#    #+#             */
-/*   Updated: 2026/11/17 11:25:14 by albarrei         ###   ########.fr       */
+/*   Updated: 2026/11/17 15:11:31 by albarrei         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -200,16 +200,9 @@ static void handleQuit(Server& server, Client& client, const Message& msg)
     (void)server;
     std::string reason = "Client Quit";
 
-    if (!msg.params.empty())
+    if (!msg.params.empty() && !msg.params[0].empty())
         reason = msg.params[0];
     client.setQuitReason(reason);
-
-	if (client.isAuthenticated())
-	{
-		std::string	quitMsg = ":" + client.prefix() + " QUIT :" + reason + "\r\n";
-		server.broadcastToUserChannels(client, quitMsg, false);
-	}
-	
     closeLink(client, "Quit: " + reason);
 }
 
