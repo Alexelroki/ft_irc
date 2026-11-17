@@ -6,7 +6,7 @@
 /*   By: dponce <dponce@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/01 21:32:13 by kanye             #+#    #+#             */
-/*   Updated: 2026/11/17 21:16:24 by dponce           ###   ########.fr       */
+/*   Updated: 2026/11/18 00:25:32 by dponce           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,7 +81,7 @@ static void closeLink(Client& client, const std::string& reason)
 
 static void sendWelcome(Server& server, Client& client)
 {
-	std::string s_name = SERVER_NAME;
+	std::string s_name = server.getName();
 	sendNumeric(server, client, RPL_WELCOME, "", "Welcome to the IRC Network " + client.prefix());
 	sendNumeric(server, client, RPL_YOURHOST, "", "Your host is " + s_name + ", running version 1.0");
 	sendNumeric(server, client, RPL_CREATED, "", "This server was created when it was started");
@@ -215,7 +215,7 @@ static void handleCap(Server& server, Client& client, const Message& msg)
 
 	std::string sub = toUpper(msg.params[0]);
 	std::string target = client.hasNick() ? client.getNick() : std::string("*");
-	std::string s_name = SERVER_NAME;
+	std::string s_name = server.getName();
 
 	if (sub == "LS" || sub == "LIST")
 		client.queue(":" + s_name + " CAP " + target + " " + sub + " :\r\n");
@@ -230,7 +230,7 @@ static void handlePing(Server& server, Client& client, const Message& msg)
 		sendNumeric(server, client, ERR_NOORIGIN);
 		return ;
 	}
-	std::string s_name = SERVER_NAME;
+	std::string s_name = server.getName();
 	client.queue(":" + s_name + " PONG " + s_name + " :" + msg.params[0] + "\r\n");
 }
 
@@ -255,7 +255,7 @@ static void handlePrivmsg(Server& server, Client& client, const Message& msg)
 		return ;
 	}
 
-	Client* dest = server.findClientByNick(target);
+	Client* dest = server.findClient(target);
 	if (dest == NULL)
 	{
 		sendNumeric(server, client, ERR_NOSUCHNICK, target);

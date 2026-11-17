@@ -47,7 +47,6 @@ class Server
 		// Channel and Client management
 		Channel*						findChannel(const std::string& name);
 		Client*							findClient(const std::string& nick);
-		Client*							findClientByNick(const std::string& nick);
 		bool							isNickInUse(const std::string& nick, const Client* exclude = NULL) const;
 		void							insertMap(Channel* channel);
 		void							requestDeleteChannel(std::string name);

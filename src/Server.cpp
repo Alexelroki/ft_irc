@@ -372,11 +372,6 @@ Client*					Server::findClient(const std::string& nick)
 	return (NULL);
 }
 
-Client*					Server::findClientByNick(const std::string& nick)
-{
-	return (findClient(nick));
-}
-
 bool					Server::isNickInUse(const std::string& nick, const Client* exclude) const
 {
 	std::string	target = nick;

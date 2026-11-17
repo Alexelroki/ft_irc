@@ -41,7 +41,7 @@ static const char*	defaultText(int code)
 void	sendNumeric(Server& server, Client& client, int code, const std::string& params, const std::string& trailing)
 {
 	(void)server;
-	std::string	line = ":" + std::string(SERVER_NAME) + " ";
+	std::string	line = ":" + server.getName() + " ";
 	std::string	text = (trailing.empty() ? std::string(defaultText(code)) : trailing);
 
 	line += static_cast<char>('0' + (code / 100) % 10);
