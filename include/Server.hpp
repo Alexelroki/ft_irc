@@ -4,6 +4,7 @@
 # include <string>
 # include <vector>
 # include <map>
+# include <set>
 # include <iostream>
 # include <stdexcept>
 # include <cstdlib>
@@ -51,6 +52,7 @@ class Server
 		void							insertMap(Channel* channel);
 		void							requestDeleteChannel(std::string name);
 		bool							isValidName(const std::string& name) const;
+		void							broadcastToUserChannels(Client& sender, const std::string& msg, bool includeSender);
 
 	private:
 		int								port_;

@@ -105,8 +105,7 @@ void					Server::start()
 		for (size_t i = 1; i < this->pollFds_.size(); ++i)
 		{
 			int fd = this->pollFds_[i].fd;
-			std::map<int, Client*>::iterator	it
- = this->clients_.find(fd);
+			std::map<int, Client*>::iterator	it = this->clients_.find(fd);
 			if (it != this->clients_.end() && it->second->hasQueuedMessages())
 				this->pollFds_[i].events = POLLIN | POLLOUT;
 			else
@@ -425,5 +424,27 @@ bool					Server::isValidName(const std::string& name) const
 			return (false);
 		return (true);
 	}
-	return (true);
+	return (false);
+}
+
+void					Server::broadcastToUserChannels(Client& sender, const std::string& msg, bool includeSender)
+{
+	std::set<Client*>	recipients;
+
+	for (std::map<std::string, Channel*>::iterator it = this->channels_.begin(); it != this->channels_.end(); ++it)
+	{
+		Channel*	ch = it->second;
+		if (ch->hasMember(&sender))
+		{
+			const std::set<Client*>&	members = ch->getMembers();
+			recipients.insert(members.begin(), members.end());
+		}
+	}
+
+	if (includeSender)
+		recipients.insert(&sender);
+	else
+		recipients.erase(&sender);
+	for(std::set<Client*>::iterator it = recipients.begin(); it != recipients.end(); ++it)
+		(*it)->queue(msg);
 }

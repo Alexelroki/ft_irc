@@ -6,7 +6,7 @@
 /*   By: albarrei <albarrei@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/01 21:32:13 by kanye             #+#    #+#             */
-/*   Updated: 2026/11/13 18:09:44 by albarrei         ###   ########.fr       */
+/*   Updated: 2026/11/17 11:25:14 by albarrei         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -153,9 +153,10 @@ static void handleNick(Server& server, Client& client, const Message& msg)
     if (client.isAuthenticated())
     {
         if (nick == client.getNick())
-            return ;
-        client.queue(":" + client.prefix() + " NICK :" + nick + "\r\n");
+			return ;
+		std::string	notification = ":" + client.prefix() + " NICK :" + nick + "\r\n";
         client.setNick(nick);
+		server.broadcastToUserChannels(client, notification, true);
         return ;
     }
     client.setNick(nick);
@@ -202,6 +203,13 @@ static void handleQuit(Server& server, Client& client, const Message& msg)
     if (!msg.params.empty())
         reason = msg.params[0];
     client.setQuitReason(reason);
+
+	if (client.isAuthenticated())
+	{
+		std::string	quitMsg = ":" + client.prefix() + " QUIT :" + reason + "\r\n";
+		server.broadcastToUserChannels(client, quitMsg, false);
+	}
+	
     closeLink(client, "Quit: " + reason);
 }
 

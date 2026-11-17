@@ -200,6 +200,11 @@ const std::string	&Channel::getName() const
 	return (_name);
 }
 
+const std::set<Client*>	&Channel::getMembers() const
+{
+	return (_members);
+}
+
 std::string		Channel::getModes() const
 {
 	std::string line = "+";
