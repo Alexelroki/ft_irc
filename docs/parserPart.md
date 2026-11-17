@@ -24,12 +24,12 @@ y compila; lo que sigue bloquea que enlace, que se pueda probar o que funcione d
 3. **Envío de datos (`send()` / `POLLOUT`).** Ahora mismo `Server` nunca llama a `send()`: nada de lo que se encola con `queue()` llega al cliente.
    - Después de procesar los comandos hay que vaciar la cola de **todos** los clientes que tengan algo pendiente, no solo la del que habló.
      Un PRIVMSG a un usuario encola en la cola del *destinatario*.
-   - Cuando un cliente está marcado con `isClosing()`, vaciar su cola **antes** de `closeClient_`, para que llegue el `ERROR :Closing Link...`
+   - Cuando un cliente está marcado con `isClosing()`, vaciar su cola **antes** de `_closeClient`, para que llegue el `ERROR :Closing Link...`
      (QUIT, contraseña incorrecta, username inválido). Si se cerró por desbordar la cola, no hace falta.
    - Si `send()` manda solo una parte, `popQueuedMessage()` ya ha sacado el mensaje entero y no hay forma de devolver el resto.
      Si lo necesitas, **yo añado** a `Client` una función para mirar el primer mensaje sin sacarlo y otra para consumir solo N bytes. Dímelo.
 
-4. **`setHost` en `acceptClient_`:** `client->setHost(inet_ntoa(clientAddr.sin_addr));`
+4. **`setHost` en `_acceptClient`:** `client->setHost(inet_ntoa(clientAddr.sin_addr));`
    Hoy el host queda vacío y el prefijo sale como `nick!user@` (afecta también a los JOIN/PART/KICK de Darío).
 
 5. **`getName()` como única fuente del nombre del servidor.** Existe en `alex/socket-server` (devuelve `"ircserv"`) pero falta fusionar, y esa rama
@@ -46,16 +46,16 @@ y compila; lo que sigue bloquea que enlace, que se pueda probar o que funcione d
      Si el cliente cayó sin enviar QUIT el motivo viene vacío y `Server` pone el texto que prefiera (por ejemplo "Connection closed").
    - Para QUIT debe ejecutarse **antes** de sacar al cliente de los canales.
 
-7. **Limpieza al cerrar un cliente (`closeClient_`).**
+7. **Limpieza al cerrar un cliente (`_closeClient`).**
    - Llamar a `removeClient(client)` en **todos** los canales, sin filtrar con `hasMember`, y antes del `delete client`
      (si no, queda un puntero colgante en `_guests`). Esto ya lo dejó anotado Darío.
    - Quitar al cliente de `clients_` y liberarlo; pedir el borrado de los canales que queden vacíos.
-   - En `alex/socket-server`, `closeClient_` solo cierra el fd y borra `clientBuffers_`; no toca canales ni libera el `Client`.
+   - En `alex/socket-server`, `_closeClient` solo cierra el fd y borra `clientBuffers_`; no toca canales ni libera el `Client`.
 
 ### Integración de ramas
 
 8. **Fusionar `develop/parser` y `alex/socket-server`.** Divergen desde `ccaab86` y ambas tocan `Server.hpp` y `Server.cpp`.
-   De mi lado hay que conservar: `Client*` en `clients_`, el bloque de `handleClientData_` (con el límite de 4096 ya corregido, `parseMessage` y `executeCommand`)
+   De mi lado hay que conservar: `Client*` en `clients_`, el bloque de `_handleClientData` (con el límite de 4096 ya corregido, `parseMessage` y `executeCommand`)
    y los includes de `Message.hpp`, `Client.hpp` y `CommandHandler.hpp` que la rama de Alex no tiene en `Server.hpp`.
 
 9. **Makefile:** faltan en `SRCS` `Replies.cpp` (mío) y `cmdChannel.cpp` (de Darío). Sin ellos falla el enlazado con `sendNumeric` y los `cmd*` sin definir.

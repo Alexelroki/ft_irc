@@ -2,25 +2,25 @@
 #include "Channel.hpp"
 #include <algorithm>
 
-bool					Server::signalReceived_ = false;
+bool					Server::_signalReceived = false;
 
 void					Server::signalHandler(int sigNum)
 {
 	(void)sigNum;
-	Server::signalReceived_ = true;
+	Server::_signalReceived = true;
 }
 
 Server::Server()
-	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), channels_(), clients_() {}
+	: _port(0), _password(""), _serverSocketFd(-1), _pollFds(), _channels(), _clients() {}
 
 Server::Server(const std::string& portStr, const std::string& passStr)
-	: port_(0), password_(""), serverSocketFd_(-1), pollFds_(), channels_(), clients_()
+	: _port(0), _password(""), _serverSocketFd(-1), _pollFds(), _channels(), _clients()
 {
-	parseArgs_(portStr, passStr);
-	initSocket_();
+	_parseArgs(portStr, passStr);
+	_initSocket();
 }
 
-void					Server::parseArgs_(const std::string& portStr, const std::string& passStr)
+void					Server::_parseArgs(const std::string& portStr, const std::string& passStr)
 {
 	if (portStr.empty())
 		throw std::runtime_error("Error: Port cannot be empty.");
@@ -41,29 +41,29 @@ void					Server::parseArgs_(const std::string& portStr, const std::string& passS
 	if (passStr.empty())
 		throw std::runtime_error("Error: Password cannot be empty.");
 
-	this->port_ = static_cast<int>(portVal);
-	this->password_ = passStr;
+	this->_port = static_cast<int>(portVal);
+	this->_password = passStr;
 }
 
-void					Server::initSocket_()
+void					Server::_initSocket()
 {
 	// 1. Create socket
-	this->serverSocketFd_ = socket(AF_INET, SOCK_STREAM, 0);
-	if (this->serverSocketFd_ < 0)
+	this->_serverSocketFd = socket(AF_INET, SOCK_STREAM, 0);
+	if (this->_serverSocketFd < 0)
 		throw std::runtime_error("Error: Failed to create server socket.");
 
 	// 2. Allow quick reuse of port/address
 	int					opt = 1;
-	if (setsockopt(this->serverSocketFd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+	if (setsockopt(this->_serverSocketFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
 	{
-		close(this->serverSocketFd_);
+		close(this->_serverSocketFd);
 		throw std::runtime_error("Error: Failed to set SO_REUSEADDR on socket.");
 	}
 
 	// 3. Set non-blocking mode
-	if (fcntl(this->serverSocketFd_, F_SETFL, O_NONBLOCK) < 0)
+	if (fcntl(this->_serverSocketFd, F_SETFL, O_NONBLOCK) < 0)
 	{
-		close(this->serverSocketFd_);
+		close(this->_serverSocketFd);
 		throw std::runtime_error("Error: Failed to set non-blocking flag on server socket.");
 	}
 
@@ -72,84 +72,84 @@ void					Server::initSocket_()
 	std::memset(&serverAddr, 0, sizeof(serverAddr));
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_addr.s_addr = INADDR_ANY;
-	serverAddr.sin_port = htons(this->port_);
+	serverAddr.sin_port = htons(this->_port);
 
-	if (bind(this->serverSocketFd_, reinterpret_cast<struct sockaddr*>(&serverAddr), sizeof(serverAddr)) < 0)
+	if (bind(this->_serverSocketFd, reinterpret_cast<struct sockaddr*>(&serverAddr), sizeof(serverAddr)) < 0)
 	{
-		close(this->serverSocketFd_);
+		close(this->_serverSocketFd);
 		throw std::runtime_error("Error: Failed to bind socket to port.");
 	}
 
 	// 5. Listen for incoming connections
-	if (listen(this->serverSocketFd_, SOMAXCONN) < 0)
+	if (listen(this->_serverSocketFd, SOMAXCONN) < 0)
 	{
-		close(this->serverSocketFd_);
+		close(this->_serverSocketFd);
 		throw std::runtime_error("Error: Failed to listen on socket.");
 	}
 
 	// Add server socket to poll set
 	struct pollfd	serverPollFd;
-	serverPollFd.fd = this->serverSocketFd_;
+	serverPollFd.fd = this->_serverSocketFd;
 	serverPollFd.events = POLLIN;
 	serverPollFd.revents = 0;
-	this->pollFds_.push_back(serverPollFd);
+	this->_pollFds.push_back(serverPollFd);
 }
 
 void					Server::start()
 {
-	std::cout << "Server listening on port " << this->port_ << "...\n";
+	std::cout << "Server listening on port " << this->_port << "...\n";
 
-	while (!Server::signalReceived_)
+	while (!Server::_signalReceived)
 	{
 		// Activate POLLOUT only for clients that have queued messages waiting to be sent
-		for (size_t i = 1; i < this->pollFds_.size(); ++i)
+		for (size_t i = 1; i < this->_pollFds.size(); ++i)
 		{
-			int fd = this->pollFds_[i].fd;
-			std::map<int, Client*>::iterator	it = this->clients_.find(fd);
-			if (it != this->clients_.end() && it->second->hasQueuedMessages())
-				this->pollFds_[i].events = POLLIN | POLLOUT;
+			int fd = this->_pollFds[i].fd;
+			std::map<int, Client*>::iterator	it = this->_clients.find(fd);
+			if (it != this->_clients.end() && it->second->hasQueuedMessages())
+				this->_pollFds[i].events = POLLIN | POLLOUT;
 			else
-				this->pollFds_[i].events = POLLIN;
+				this->_pollFds[i].events = POLLIN;
 		}
 
-		int		ret = poll(&this->pollFds_[0], this->pollFds_.size(), -1);
+		int		ret = poll(&this->_pollFds[0], this->_pollFds.size(), -1);
 		if (ret < 0)
 		{
-			if (Server::signalReceived_)
+			if (Server::_signalReceived)
 				break;
 			throw std::runtime_error("Error: poll() system call failed.");
 		}
 
-		for (size_t i = 0; i < this->pollFds_.size(); ++i)
+		for (size_t i = 0; i < this->_pollFds.size(); ++i)
 		{
-			if (this->pollFds_[i].revents == 0)
+			if (this->_pollFds[i].revents == 0)
 				continue ;
 
-			if (this->pollFds_[i].revents & POLLIN)
+			if (this->_pollFds[i].revents & POLLIN)
 			{
-				if (this->pollFds_[i].fd == this->serverSocketFd_)
-					acceptClient_();
+				if (this->_pollFds[i].fd == this->_serverSocketFd)
+					_acceptClient();
 				else
-					handleClientData_(this->pollFds_[i].fd, i);
+					_handleClientData(this->_pollFds[i].fd, i);
 			}
-			else if (this->pollFds_[i].revents & POLLOUT)
+			else if (this->_pollFds[i].revents & POLLOUT)
 			{
-				flushClientQueue_(this->pollFds_[i].fd, i);
+				_flushClientQueue(this->_pollFds[i].fd, i);
 			}
-			else if (this->pollFds_[i].revents & (POLLHUP | POLLERR | POLLNVAL))
+			else if (this->_pollFds[i].revents & (POLLHUP | POLLERR | POLLNVAL))
 			{
-				closeClient_(this->pollFds_[i].fd, i);
+				_closeClient(this->_pollFds[i].fd, i);
 			}
 		}
 	}
 }
 
-void					Server::acceptClient_()
+void					Server::_acceptClient()
 {
 	struct sockaddr_in	clientAddr;
 	socklen_t			clientLen = sizeof(clientAddr);
 
-	int					clientFd = accept(this->serverSocketFd_, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientLen);
+	int					clientFd = accept(this->_serverSocketFd, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientLen);
 	if (clientFd < 0)
 		return ;
 
@@ -164,15 +164,15 @@ void					Server::acceptClient_()
 	clientPollFd.events = POLLIN;
 	clientPollFd.revents = 0;
 
-	this->pollFds_.push_back(clientPollFd);
-	this->clients_[clientFd] = new Client(clientFd);
-	this->clients_[clientFd]->setHost(inet_ntoa(clientAddr.sin_addr));
+	this->_pollFds.push_back(clientPollFd);
+	this->_clients[clientFd] = new Client(clientFd);
+	this->_clients[clientFd]->setHost(inet_ntoa(clientAddr.sin_addr));
 
 	std::cout << "[+] New connection from fd " << clientFd << " (" 
 	<< inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << ")\n";
 }
 
-void					Server::handleClientData_(int clientFd, size_t pollIndex)
+void					Server::_handleClientData(int clientFd, size_t pollIndex)
 {
 	char				buffer[1024];
 	std::memset(buffer, 0, sizeof(buffer));
@@ -180,11 +180,11 @@ void					Server::handleClientData_(int clientFd, size_t pollIndex)
 	ssize_t				bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
 	if (bytesRead <= 0)
 	{
-		closeClient_(clientFd, pollIndex);
+		_closeClient(clientFd, pollIndex);
 		return;
 	}
 
-	Client* client = this->clients_[clientFd];
+	Client* client = this->_clients[clientFd];
 	client->appendBuffer(std::string(buffer, bytesRead));
 	if (client->getBufferSize() > 4096)
 		client->setClosing();
@@ -213,14 +213,14 @@ void					Server::handleClientData_(int clientFd, size_t pollIndex)
 			std::string out = client->popQueuedMessage();
 			send(clientFd, out.c_str(), out.size(), MSG_NOSIGNAL);
 		}
-		closeClient_(clientFd, pollIndex);
+		_closeClient(clientFd, pollIndex);
 	}
 }
 
-void					Server::flushClientQueue_(int clientFd, size_t pollIndex)
+void					Server::_flushClientQueue(int clientFd, size_t pollIndex)
 {
-	std::map<int, Client*>::iterator	it = this->clients_.find(clientFd);
-	if (it == this->clients_.end())
+	std::map<int, Client*>::iterator	it = this->_clients.find(clientFd);
+	if (it == this->_clients.end())
 		return ;
 
 	Client*	client = it->second;
@@ -230,18 +230,18 @@ void					Server::flushClientQueue_(int clientFd, size_t pollIndex)
 		ssize_t sent = send(clientFd, msg.c_str(), msg.size(), MSG_NOSIGNAL);
 		if (sent < 0)
 		{
-			closeClient_(clientFd, pollIndex);
+			_closeClient(clientFd, pollIndex);
 			return ;
 		}
 	}
 }
 
-void					Server::closeClient_(int clientFd, size_t pollIndex)
+void					Server::_closeClient(int clientFd, size_t pollIndex)
 {
 	std::cout << "[-] Client disconnected on fd " << clientFd << "\n";
 
-	std::map<int, Client*>::iterator	cit = this->clients_.find(clientFd);
-	if (cit != this->clients_.end())
+	std::map<int, Client*>::iterator	cit = this->_clients.find(clientFd);
+	if (cit != this->_clients.end())
 	{
 		Client* client = cit->second;
 
@@ -254,87 +254,87 @@ void					Server::closeClient_(int clientFd, size_t pollIndex)
 		}
 
 		// Remove client from all channels (members, operators, guests) before deleting
-		for (std::map<std::string, Channel*>::iterator chIt = this->channels_.begin();
-			 chIt != this->channels_.end(); )
+		for (std::map<std::string, Channel*>::iterator chIt = this->_channels.begin();
+			 chIt != this->_channels.end(); )
 		{
 			Channel* ch = chIt->second;
 			ch->removeClient(client);
 			if (ch->isEmpty())
 			{
 				delete ch;
-				this->channels_.erase(chIt++);
+				this->_channels.erase(chIt++);
 			}
 			else
 				++chIt;
 		}
 		delete client;
-		this->clients_.erase(cit);
+		this->_clients.erase(cit);
 	}
 
 	close(clientFd);
-	this->pollFds_.erase(this->pollFds_.begin() + pollIndex);
+	this->_pollFds.erase(this->_pollFds.begin() + pollIndex);
 }
 
-void					Server::cleanup_()
+void					Server::_cleanup()
 {
 	std::cout << "\nShutting down server and closing open descriptors...\n";
-	for (size_t i = 0; i < this->pollFds_.size(); ++i)
+	for (size_t i = 0; i < this->_pollFds.size(); ++i)
 	{
-		if (this->pollFds_[i].fd >= 0)
-			close(this->pollFds_[i].fd);
+		if (this->_pollFds[i].fd >= 0)
+			close(this->_pollFds[i].fd);
 	}
-	this->pollFds_.clear();
+	this->_pollFds.clear();
 
-	for (std::map<std::string, Channel*>::iterator	it = this->channels_.begin();
-		 it != this->channels_.end(); ++it)
+	for (std::map<std::string, Channel*>::iterator	it = this->_channels.begin();
+		 it != this->_channels.end(); ++it)
 	{
 		delete it->second;
 	}
-	this->channels_.clear();
+	this->_channels.clear();
 
-	for (std::map<int, Client*>::iterator	it = this->clients_.begin();
-		 it != this->clients_.end(); ++it)
+	for (std::map<int, Client*>::iterator	it = this->_clients.begin();
+		 it != this->_clients.end(); ++it)
 	{
 		delete it->second;
 	}
-	this->clients_.clear();
+	this->_clients.clear();
 }
 
 Server::Server(const Server& other)
-	:	port_(other.port_),
-		password_(other.password_),
-		serverSocketFd_(other.serverSocketFd_),
-		pollFds_(other.pollFds_),
-		channels_(other.channels_),
-		clients_(other.clients_) {}
+	:	_port(other._port),
+		_password(other._password),
+		_serverSocketFd(other._serverSocketFd),
+		_pollFds(other._pollFds),
+		_channels(other._channels),
+		_clients(other._clients) {}
 
 Server&					Server::operator=(const Server& other)
 {
 	if (this != &other)
 	{
-		this->port_ = other.port_;
-		this->password_ = other.password_;
-		this->serverSocketFd_ = other.serverSocketFd_;
-		this->pollFds_ = other.pollFds_;
-		this->channels_ = other.channels_;
-		this->clients_ = other.clients_;
+		this->_port = other._port;
+		this->_password = other._password;
+		this->_serverSocketFd = other._serverSocketFd;
+		this->_pollFds = other._pollFds;
+		this->_channels = other._channels;
+		this->_clients = other._clients;
 	}
 	return (*this);
 }
 
 Server::~Server()
 {
-	cleanup_();
+	_cleanup();
 }
 
 int						Server::getPort() const
 {
-	return (this->port_);
+	return (this->_port);
 }
 
 const std::string&		Server::getPassword() const
 {
-	return (this->password_);
+	return (this->_password);
 }
 
 std::string				Server::getName() const
@@ -348,8 +348,8 @@ Channel*				Server::findChannel(const std::string& name)
 	for (size_t i = 0; i < key.length(); ++i)
 		key[i] = std::tolower(key[i]);
 
-	std::map<std::string, Channel*>::iterator	it = this->channels_.find(key);
-	if (it != this->channels_.end())
+	std::map<std::string, Channel*>::iterator	it = this->_channels.find(key);
+	if (it != this->_channels.end())
 		return (it->second);
 	return (NULL);
 }
@@ -360,8 +360,8 @@ Client*					Server::findClient(const std::string& nick)
 	for (size_t i = 0; i < target.length(); ++i)
 		target[i] = std::tolower(target[i]);
 
-	for (std::map<int, Client*>::iterator	it = this->clients_.begin();
-		 it != this->clients_.end(); ++it)
+	for (std::map<int, Client*>::iterator	it = this->_clients.begin();
+		 it != this->_clients.end(); ++it)
 	{
 		std::string current = it->second->getNick();
 		for (size_t i = 0; i < current.length(); ++i)
@@ -383,8 +383,8 @@ bool					Server::isNickInUse(const std::string& nick, const Client* exclude) con
 	for (size_t i = 0; i < target.length(); ++i)
 		target[i] = std::tolower(target[i]);
 
-	for (std::map<int, Client*>::const_iterator it = this->clients_.begin();
-		 it != this->clients_.end(); ++it)
+	for (std::map<int, Client*>::const_iterator it = this->_clients.begin();
+		 it != this->_clients.end(); ++it)
 	{
 		if (it->second == exclude)
 			continue ;
@@ -404,7 +404,7 @@ void					Server::insertMap(Channel* channel)
 	std::string	key = channel->getName();
 	for (size_t i = 0; i < key.length(); ++i)
 		key[i] = std::tolower(key[i]);
-	this->channels_[key] = channel;
+	this->_channels[key] = channel;
 }
 
 void					Server::requestDeleteChannel(std::string name)
@@ -413,11 +413,11 @@ void					Server::requestDeleteChannel(std::string name)
 	for (size_t i = 0; i < key.length(); ++i)
 		key[i] = std::tolower(key[i]);
 
-	std::map<std::string, Channel*>::iterator	it = this->channels_.find(key);
-	if (it != this->channels_.end())
+	std::map<std::string, Channel*>::iterator	it = this->_channels.find(key);
+	if (it != this->_channels.end())
 	{
 		delete it->second;
-		this->channels_.erase(it);
+		this->_channels.erase(it);
 	}
 }
 
@@ -440,7 +440,7 @@ void					Server::broadcastToUserChannels(Client& sender, const std::string& msg,
 {
 	std::set<Client*>	recipients;
 
-	for (std::map<std::string, Channel*>::iterator it = this->channels_.begin(); it != this->channels_.end(); ++it)
+	for (std::map<std::string, Channel*>::iterator it = this->_channels.begin(); it != this->_channels.end(); ++it)
 	{
 		Channel*	ch = it->second;
 		if (ch->hasMember(&sender))

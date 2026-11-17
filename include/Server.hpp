@@ -55,25 +55,25 @@ class Server
 		void							broadcastToUserChannels(Client& sender, const std::string& msg, bool includeSender);
 
 	private:
-		int								port_;
-		std::string						password_;
-		int								serverSocketFd_;
-		std::vector<struct pollfd>		pollFds_;
+		int								_port;
+		std::string						_password;
+		int								_serverSocketFd;
+		std::vector<struct pollfd>		_pollFds;
 
 		// Containers for Channels and Clients
-		std::map<std::string, Channel*>	channels_;
-		std::map<int, Client*>			clients_;
+		std::map<std::string, Channel*>	_channels;
+		std::map<int, Client*>			_clients;
 
-		static bool						signalReceived_;
+		static bool						_signalReceived;
 
 		Server();
-		void							parseArgs_(const std::string& portStr, const std::string& passStr);
-		void							initSocket_();
-		void							acceptClient_();
-		void							handleClientData_(int clientFd, size_t pollIndex);
-		void							flushClientQueue_(int clientFd, size_t pollIndex);
-		void							closeClient_(int clientFd, size_t pollIndex);
-		void							cleanup_();
+		void							_parseArgs(const std::string& portStr, const std::string& passStr);
+		void							_initSocket();
+		void							_acceptClient();
+		void							_handleClientData(int clientFd, size_t pollIndex);
+		void							_flushClientQueue(int clientFd, size_t pollIndex);
+		void							_closeClient(int clientFd, size_t pollIndex);
+		void							_cleanup();
 };
 
 #endif
