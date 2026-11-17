@@ -21,7 +21,7 @@
 # include <arpa/inet.h>
 # include "Message.hpp"
 # include "Client.hpp"
-# include "CommandHandler.hpp"
+# include "commandHandler.hpp"
 
 # define SERVER_NAME "ft_irc"
 

@@ -1,5 +1,5 @@
-#ifndef UTILSCHANNEL_HPP
-# define UTILSCHANNEL_HPP
+#ifndef UTILS_HPP
+# define UTILS_HPP
 
 # include <sstream>
 

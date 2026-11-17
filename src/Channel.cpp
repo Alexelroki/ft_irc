@@ -1,6 +1,6 @@
 #include "Channel.hpp"
 #include "Client.hpp"
-#include "utilsChannel.hpp"
+#include "utils.hpp"
 
 Channel::Channel(const std::string &name)
 	: _name(name), _inviteOnly(false), _topicRestricted(false), _hasKey(false), _hasLimit(false), _limit(0)

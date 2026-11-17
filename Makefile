@@ -10,12 +10,12 @@ OBJ_DIR = .objs
 SRCS =	main.cpp \
 		Server.cpp \
 		Client.cpp \
-		Parser.cpp \
-		CommandHandler.cpp \
 		Channel.cpp \
+		parser.cpp \
+		commandHandler.cpp \
 		cmdChannel.cpp \
-		utilsChannel.cpp \
-		Replies.cpp
+		utils.cpp \
+		replies.cpp
 
 OBJS = $(addprefix $(OBJ_DIR)/,$(SRCS:.cpp=.o))
 DEPS = $(OBJS:.o=.d)

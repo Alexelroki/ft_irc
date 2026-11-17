@@ -1,9 +1,9 @@
 #ifndef CMDCHANNEL_HPP
 # define CMDCHANNEL_HPP
 
-class Server;
-class Client;
-struct Message;
+class	Server;
+class	Client;
+struct	Message;
 
 void	cmdJoin(Server &server, Client &client, const Message &msg);
 void	cmdPart(Server &server, Client &client, const Message &msg);

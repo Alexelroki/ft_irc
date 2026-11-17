@@ -2,8 +2,7 @@
 #include "Server.hpp"
 #include "Client.hpp"
 #include "Channel.hpp"
-// #include "Message.hpp"
-#include "utilsChannel.hpp"
+#include "utils.hpp"
 #include <new>
 
 static void reply(Server &server, Client &client, const std::string &code, const std::string &params, const std::string &trailing = "") // B revisar queue para encolar mensaje y getNick
@@ -529,5 +528,3 @@ void	cmdMode(Server &server, Client &client, const Message &msg)
 		}
 	}
 }
-
-// Message { prefix, command, params[] }
