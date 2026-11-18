@@ -5,6 +5,7 @@
 #include "replies.hpp"
 #include "cmdChannel.hpp"  
 #include "utils.hpp"
+#include <cctype>
 
 
 static const size_t	USERNAME_MAX = 18;

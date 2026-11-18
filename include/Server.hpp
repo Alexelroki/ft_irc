@@ -32,8 +32,6 @@ class Server
 	public:
 		// Orthodox Canonical Form
 		Server(const std::string& portStr, const std::string& passStr);
-		Server(const Server& other);
-		Server&							operator=(const Server& other);
 		~Server();
 
 		void							start();
@@ -66,6 +64,10 @@ class Server
 		static bool						_signalReceived;
 
 		Server();
+		// not implemented: Server is not copyable
+		Server(const Server& other);
+		Server&							operator=(const Server& other);
+	
 		void							_parseArgs(const std::string& portStr, const std::string& passStr);
 		void							_initSocket();
 		void							_acceptClient();

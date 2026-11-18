@@ -23,6 +23,11 @@ Server::Server(const std::string& portStr, const std::string& passStr)
 	_initSocket();
 }
 
+Server::~Server()
+{
+	_cleanup();
+}
+
 void					Server::_parseArgs(const std::string& portStr, const std::string& passStr)
 {
 	if (portStr.empty())
@@ -30,7 +35,7 @@ void					Server::_parseArgs(const std::string& portStr, const std::string& passS
 
 	for (size_t i = 0; i < portStr.length(); ++i)
 	{
-		if (!std::isdigit(portStr[i]))
+		if (!std::isdigit(static_cast<unsigned char>(portStr[i])))
 			throw std::runtime_error("Error: Port must contain only numeric digits.");
 	}
 
@@ -301,33 +306,6 @@ void					Server::_cleanup()
 		delete it->second;
 	}
 	this->_clients.clear();
-}
-
-Server::Server(const Server& other)
-	:	_port(other._port),
-		_password(other._password),
-		_serverSocketFd(other._serverSocketFd),
-		_pollFds(other._pollFds),
-		_channels(other._channels),
-		_clients(other._clients) {}
-
-Server&					Server::operator=(const Server& other)
-{
-	if (this != &other)
-	{
-		this->_port = other._port;
-		this->_password = other._password;
-		this->_serverSocketFd = other._serverSocketFd;
-		this->_pollFds = other._pollFds;
-		this->_channels = other._channels;
-		this->_clients = other._clients;
-	}
-	return (*this);
-}
-
-Server::~Server()
-{
-	_cleanup();
 }
 
 int						Server::getPort() const
