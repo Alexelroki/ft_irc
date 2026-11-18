@@ -1,4 +1,5 @@
 #include "Message.hpp"
+#include "utils.hpp"
 
 
 static const size_t	MAX_PARAMS = 15;
@@ -47,10 +48,8 @@ static void	parseHead(std::string &input, Message &msg)
 		skipSpaces(input);
 	}
  
-	//Command
-	msg.command = takeWord(input);
-	for (size_t i = 0; i < msg.command.size(); i++) //All to uppercase
-		msg.command[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(msg.command[i])));
+	//Command, always in uppercase
+	msg.command = toUpper(takeWord(input));
 }
 
 

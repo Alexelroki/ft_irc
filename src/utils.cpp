@@ -1,4 +1,5 @@
 #include "utils.hpp"
+#include <cctype>
 
 std::string toString(size_t n)
 {
@@ -24,4 +25,32 @@ bool	allDigits(const std::string &str)
 	if (str.find_first_not_of("0123456789") != std::string::npos)
 		return (false);
 	return (true);
+}
+
+std::string		toLower(const std::string &s)
+{
+	std::string res(s);
+	size_t		i;
+
+	i = 0;
+	while (i < res.size())
+	{
+		res[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(res[i])));
+		i++;
+	}
+	return (res);
+}
+
+std::string		toUpper(const std::string &s)
+{
+	std::string res(s);
+	size_t		i;
+
+	i = 0;
+	while (i < res.size())
+	{
+		res[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(res[i])));
+		i++;
+	}
+	return (res);
 }

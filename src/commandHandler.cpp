@@ -1,21 +1,10 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   commandHandler.cpp                                 :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: dponce <dponce@student.42.fr>              +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/11/01 21:32:13 by kanye             #+#    #+#             */
-/*   Updated: 2026/11/18 00:25:32 by dponce           ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #include "commandHandler.hpp"
 #include "Server.hpp"
 #include "Client.hpp"
 #include "Message.hpp"
 #include "replies.hpp"
 #include "cmdChannel.hpp"  
+#include "utils.hpp"
 
 
 static const size_t	USERNAME_MAX = 18;
@@ -57,16 +46,6 @@ static bool isValidUsername(const std::string& user)
 			return (false);
 	}
 	return (true);
-}
-
-//Converts the whole string to upper
-static std::string  toUpper(const std::string& s)
-{
-	std::string res(s);
-
-	for (size_t i = 0; i < res.size(); ++i)
-		res[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(res[i])));
-	return (res);
 }
 
 //Tells the client why it is being disconnected and marks it to be closed.

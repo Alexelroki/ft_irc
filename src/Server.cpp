@@ -1,6 +1,9 @@
 #include "Server.hpp"
 #include "Channel.hpp"
+#include "utils.hpp"
 #include <algorithm>
+#include <cctype>
+
 
 bool					Server::_signalReceived = false;
 
@@ -344,11 +347,7 @@ std::string				Server::getName() const
 
 Channel*				Server::findChannel(const std::string& name)
 {
-	std::string	key = name;
-	for (size_t i = 0; i < key.length(); ++i)
-		key[i] = std::tolower(key[i]);
-
-	std::map<std::string, Channel*>::iterator	it = this->_channels.find(key);
+	std::map<std::string, Channel*>::iterator	it = this->_channels.find(toLower(name));
 	if (it != this->_channels.end())
 		return (it->second);
 	return (NULL);
@@ -356,17 +355,12 @@ Channel*				Server::findChannel(const std::string& name)
 
 Client*					Server::findClient(const std::string& nick)
 {
-	std::string	target = nick;
-	for (size_t i = 0; i < target.length(); ++i)
-		target[i] = std::tolower(target[i]);
+	std::string	target = toLower(nick);
 
 	for (std::map<int, Client*>::iterator	it = this->_clients.begin();
 		 it != this->_clients.end(); ++it)
 	{
-		std::string current = it->second->getNick();
-		for (size_t i = 0; i < current.length(); ++i)
-			current[i] = std::tolower(current[i]);
-		if (current == target)
+		if (toLower(it->second->getNick()) == target)
 			return (it->second);
 	}
 	return (NULL);
@@ -374,19 +368,14 @@ Client*					Server::findClient(const std::string& nick)
 
 bool					Server::isNickInUse(const std::string& nick, const Client* exclude) const
 {
-	std::string	target = nick;
-	for (size_t i = 0; i < target.length(); ++i)
-		target[i] = std::tolower(target[i]);
+	std::string	target = toLower(nick);
 
 	for (std::map<int, Client*>::const_iterator it = this->_clients.begin();
 		 it != this->_clients.end(); ++it)
 	{
 		if (it->second == exclude)
 			continue ;
-		std::string	current = it->second->getNick();
-		for (size_t i = 0; i < current.length(); ++i)
-			current[i] = std::tolower(current[i]);
-		if (current == target)
+		if (toLower(it->second->getNick()) == target)
 			return (true);
 	}
 	return (false);
@@ -396,19 +385,12 @@ void					Server::insertMap(Channel* channel)
 {
 	if (!channel)
 		return ;
-	std::string	key = channel->getName();
-	for (size_t i = 0; i < key.length(); ++i)
-		key[i] = std::tolower(key[i]);
-	this->_channels[key] = channel;
+	this->_channels[toLower(channel->getName())] = channel;
 }
 
 void					Server::requestDeleteChannel(std::string name)
 {
-	std::string key = name;
-	for (size_t i = 0; i < key.length(); ++i)
-		key[i] = std::tolower(key[i]);
-
-	std::map<std::string, Channel*>::iterator	it = this->_channels.find(key);
+	std::map<std::string, Channel*>::iterator	it = this->_channels.find(toLower(name));
 	if (it != this->_channels.end())
 	{
 		delete it->second;
