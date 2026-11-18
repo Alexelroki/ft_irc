@@ -222,3 +222,14 @@ std::string		Channel::getModes() const
 		line += " " + toString(_limit);
 	return (line);
 }
+
+void	Channel::electOperator(const std::string &serverName)
+{
+	if (_members.empty() || !_operators.empty())
+		return ;
+
+	Client	*chosen = *_members.begin();
+
+	_operators.insert(chosen);
+	broadcast(":" + serverName + " MODE " + _name + " +o " + chosen->getNick() + "\r\n", NULL);
+}

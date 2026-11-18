@@ -61,6 +61,7 @@ class Channel
 		const std::string		&getName() const;
 		std::string				getModes() const;
 		const std::set<Client*>	&getMembers() const;
+		void					electOperator(const std::string &serverName);
 };
 
 #endif
