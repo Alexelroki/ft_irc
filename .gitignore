@@ -1,9 +1,0 @@
-*.o
-*.d
-ircserv
-.vscode/
-.*.sw[a-p]
-*.sw[a-p]
-obj/
-objs/
-.DS_Store
