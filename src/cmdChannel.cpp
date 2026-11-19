@@ -101,8 +101,6 @@ void	cmdPart(Server &server, Client &client, const Message &msg)
 	channel->removeClient(&client);
 	if (channel->isEmpty())
 		server.requestDeleteChannel(channel->getName());
-	else
-		channel->electOperator(server.getName());
 }
 
 void	cmdKick(Server &server, Client &client, const Message &msg)
@@ -153,8 +151,6 @@ void	cmdKick(Server &server, Client &client, const Message &msg)
 	channel->removeClient(target);
 	if (channel->isEmpty())
 		server.requestDeleteChannel(channel->getName());
-	else
-		channel->electOperator(server.getName());
 }
 
 void	cmdInvite(Server &server, Client &client, const Message &msg)

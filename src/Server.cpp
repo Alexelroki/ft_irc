@@ -273,10 +273,7 @@ void					Server::_closeClient(int clientFd, size_t pollIndex)
 				this->_channels.erase(chIt++);
 			}
 			else
-			{
-				ch->electOperator(getName());
 				++chIt;
-			}
 		}
 		delete client;
 		this->_clients.erase(cit);
